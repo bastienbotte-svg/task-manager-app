@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Manager</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Login screen -->
+  <div id="login-screen">
+    <div class="login-box">
+      <div class="login-logo">Task Manager</div>
+      <p class="login-subtitle">Sign in to access your tasks</p>
+      <a href="/auth/google" class="btn btn-primary btn-signin">Sign in with Google</a>
+    </div>
+  </div>
+
+  <!-- Main app -->
+  <div id="app" class="hidden">
+
+    <header>
+      <div class="header-left">
+        <span class="app-title">Task Manager</span>
+      </div>
+      <div class="header-right">
+        <button id="btn-quick-capture" class="btn btn-secondary">+ Quick Capture</button>
+        <button id="btn-reload" class="btn btn-outline">Reload</button>
+        <button id="btn-logout" class="btn btn-ghost">Sign out</button>
+      </div>
+    </header>
+
+    <nav id="tab-nav"></nav>
+
+    <main id="main-content">
+      <div class="loading">Loading...</div>
+    </main>
+
+  </div>
+
+  <!-- Modal: Quick Capture -->
+  <div id="modal-capture" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <h2>Quick Capture</h2>
+      <input type="text" id="capture-name" placeholder="What's on your mind?" autocomplete="off">
+      <textarea id="capture-notes" placeholder="Notes (optional)" rows="3"></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel" data-modal="modal-capture">Cancel</button>
+        <button id="capture-save" class="btn btn-primary">Save to Inbox</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add / Edit Status -->
+  <div id="modal-status" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box modal-small">
+      <h2>Update Status</h2>
+      <select id="status-value">
+        <option value="Inbox">Inbox</option>
+        <option value="To Do">To Do</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Blocked">Blocked</option>
+        <option value="Done">Done</option>
+      </select>
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel" data-modal="modal-status">Cancel</button>
+        <button id="status-save" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Notes -->
+  <div id="modal-notes" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <h2>Notes</h2>
+      <textarea id="notes-value" rows="6" placeholder="Add notes..."></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel" data-modal="modal-notes">Cancel</button>
+        <button id="notes-save" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add Project -->
+  <div id="modal-project" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <h2>New Project</h2>
+      <input type="text" id="project-name" placeholder="Project name" autocomplete="off">
+      <div class="form-row">
+        <select id="project-status">
+          <option value="To Do">To Do</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Blocked">Blocked</option>
+        </select>
+        <select id="project-priority">
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+          <option value="High">High</option>
+          <option value="Urgent">Urgent</option>
+        </select>
+      </div>
+      <textarea id="project-notes" placeholder="Notes (optional)" rows="3"></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel" data-modal="modal-project">Cancel</button>
+        <button id="project-save" class="btn btn-primary">Create Project</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add Task -->
+  <div id="modal-task" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <h2>New Task</h2>
+      <div class="modal-context" id="task-context-label"></div>
+      <input type="text" id="task-name" placeholder="Task name" autocomplete="off">
+      <select id="task-status">
+        <option value="To Do">To Do</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Blocked">Blocked</option>
+      </select>
+      <input type="date" id="task-execution-date" placeholder="Execution date (optional)">
+      <textarea id="task-notes" placeholder="Notes (optional)" rows="3"></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel" data-modal="modal-task">Cancel</button>
+        <button id="task-save" class="btn btn-primary">Add Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Task Detail -->
+  <div id="modal-task-detail" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box modal-detail">
+      <h2>Task Detail</h2>
+      <div class="detail-grid">
+        <div class="detail-field detail-full">
+          <label>Name</label>
+          <input type="text" id="detail-name" autocomplete="off">
+        </div>
+        <div class="detail-field">
+          <label>Status</label>
+          <select id="detail-status">
+            <option value="Inbox">Inbox</option>
+            <option value="To Do">To Do</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Blocked">Blocked</option>
+            <option value="Done">Done</option>
+          </select>
+        </div>
+        <div class="detail-field">
+          <label>Priority</label>
+          <select id="detail-priority">
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Urgent">Urgent</option>
+          </select>
+        </div>
+        <div class="detail-field">
+          <label>Due Date</label>
+          <input type="date" id="detail-due-date">
+        </div>
+        <div class="detail-field">
+          <label>Execution Date</label>
+          <input type="date" id="detail-execution-date">
+        </div>
+        <div class="detail-field">
+          <label>Execution Time</label>
+          <div class="tc-wrap" id="tc-exec-time">
+            <div class="tc-unit">
+              <button type="button" class="tc-btn" data-tc="exec-time" data-part="h" data-dir="1">▲</button>
+              <span class="tc-val" id="tc-exec-time-h">--</span>
+              <button type="button" class="tc-btn" data-tc="exec-time" data-part="h" data-dir="-1">▼</button>
+            </div>
+            <span class="tc-colon">:</span>
+            <div class="tc-unit">
+              <button type="button" class="tc-btn" data-tc="exec-time" data-part="m" data-dir="1">▲</button>
+              <span class="tc-val" id="tc-exec-time-m">--</span>
+              <button type="button" class="tc-btn" data-tc="exec-time" data-part="m" data-dir="-1">▼</button>
+            </div>
+            <button type="button" class="tc-clear-btn" data-tc="exec-time">&#x2715;</button>
+          </div>
+          <input type="hidden" id="detail-execution-time">
+        </div>
+        <div class="detail-field">
+          <label>Estimated Duration</label>
+          <div class="tc-wrap" id="tc-duration">
+            <div class="tc-unit">
+              <button type="button" class="tc-btn" data-tc="duration" data-part="h" data-dir="1">▲</button>
+              <span class="tc-val" id="tc-duration-h">0</span>
+              <button type="button" class="tc-btn" data-tc="duration" data-part="h" data-dir="-1">▼</button>
+              <span class="tc-unit-lbl">h</span>
+            </div>
+            <div class="tc-unit">
+              <button type="button" class="tc-btn" data-tc="duration" data-part="m" data-dir="1">▲</button>
+              <span class="tc-val" id="tc-duration-m">00</span>
+              <button type="button" class="tc-btn" data-tc="duration" data-part="m" data-dir="-1">▼</button>
+              <span class="tc-unit-lbl">m</span>
+            </div>
+            <button type="button" class="tc-clear-btn" data-tc="duration">&#x2715;</button>
+          </div>
+          <input type="hidden" id="detail-duration">
+        </div>
+        <div class="detail-field">
+          <label>Recurrence</label>
+          <input type="text" id="detail-recurrence">
+        </div>
+        <div class="detail-field">
+          <label>Difficulty</label>
+          <input type="text" id="detail-difficulty">
+        </div>
+        <div class="detail-field">
+          <label>Stage</label>
+          <input type="text" id="detail-stage">
+        </div>
+        <div class="detail-field detail-full">
+          <label>Tags</label>
+          <input type="text" id="detail-tags" placeholder="comma separated">
+        </div>
+        <div class="detail-field">
+          <label>Assigned To</label>
+          <input type="text" id="detail-assigned-to">
+        </div>
+        <div class="detail-field">
+          <label>Energy Level</label>
+          <input type="text" id="detail-energy-level">
+        </div>
+        <div class="detail-field detail-full">
+          <label>External Link</label>
+          <input type="url" id="detail-external-link" placeholder="https://...">
+        </div>
+        <div class="detail-field detail-full">
+          <label>Notes</label>
+          <textarea id="detail-notes" rows="5" placeholder="Add notes..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel" data-modal="modal-task-detail">Cancel</button>
+        <button id="detail-save" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
