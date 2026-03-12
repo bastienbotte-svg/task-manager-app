@@ -618,6 +618,28 @@ header {
   letter-spacing: 0.5px;
 }
 
+/* ─── Drag and drop ─────────────────────────────────────────────────────────── */
+.drag-handle {
+  cursor: grab;
+  color: #bdc1c6;
+  font-size: 14px;
+  flex-shrink: 0;
+  opacity: 0;
+  user-select: none;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.task-row:hover .drag-handle { opacity: 1; }
+
+@media (hover: none) {
+  .drag-handle { opacity: 0.5; }
+}
+
+.task-row.dragging { opacity: 0.4; }
+.task-row.drag-over-top    { border-top: 2px solid #1a73e8; }
+.task-row.drag-over-bottom { border-bottom: 2px solid #1a73e8; }
+
 /* ─── Utility ───────────────────────────────────────────────────────────────── */
 .hidden { display: none !important; }
 

@@ -1,22 +1,35 @@
+// ─── GAS backend URL & token ──────────────────────────────────────────────────
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbxD-2UFTo2N71FJI9GfhPURYrk2ano3mB4nVLLKCjUzKkP5qjTnLjQ4IulLIfDgVU6s/exec';
+const API_TOKEN = 'tm-botte-2026-xK9mP'; // Must match API_TOKEN in GAS Script Properties
+
 // ─── State ────────────────────────────────────────────────────────────────────
 let currentTab = null;
 let tabs = [];
 let modalContext = {}; // Stores context for open modals
 let tabDataCache = {}; // Cache of last-loaded data per tab
+let dragState = null;      // HTML5 drag state for task reordering
+let touchDragState = null; // Touch drag state for task reordering
 
-// ─── API helper ───────────────────────────────────────────────────────────────
-async function api(path, options = {}) {
-  const res = await fetch(path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
-  if (res.status === 401) {
-    document.getElementById('login-screen').classList.remove('hidden');
-    document.getElementById('app').classList.add('hidden');
-    return null;
-  }
+// ─── API helpers ──────────────────────────────────────────────────────────────
+async function gasGet(params) {
+  const all = Object.assign({ token: API_TOKEN }, params);
+  const qs = Object.entries(all).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+  const res = await fetch(`${GAS_URL}?${qs}`, { redirect: 'follow' });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+async function gasPost(body) {
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    // text/plain avoids CORS preflight — GAS parses body via e.postData.contents
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(Object.assign({ token: API_TOKEN }, body)),
+    redirect: 'follow',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (data.error) throw new Error(data.error);
   return data;
 }
 
@@ -122,15 +135,27 @@ function renderTabNav() {
 async function switchTab(tabName) {
   currentTab = tabName;
   renderTabNav();
-  await loadTabData(tabName);
+  if (tabDataCache[tabName]) {
+    // Instant render from cache, then silently refresh in background
+    renderTabContent(tabName, tabDataCache[tabName]);
+    gasGet({ action: 'data', tab: tabName })
+      .then(data => {
+        tabDataCache[tabName] = data;
+        if (currentTab === tabName) renderTabContent(tabName, data);
+      })
+      .catch(() => {});
+  } else {
+    await loadTabData(tabName);
+  }
 }
 
 async function loadTabData(tabName) {
   const main = document.getElementById('main-content');
   main.innerHTML = '<div class="loading"><span class="spinner"></span> Loading...</div>';
   try {
-    const data = await api(`/api/data/${encodeURIComponent(tabName)}`);
-    if (data) { tabDataCache[tabName] = data; renderTabContent(tabName, data); }
+    const data = await gasGet({ action: 'data', tab: tabName });
+    tabDataCache[tabName] = data;
+    renderTabContent(tabName, data);
   } catch (err) {
     main.innerHTML = `<div class="loading">Failed to load: ${esc(err.message)}</div>`;
   }
@@ -168,6 +193,10 @@ function renderHierarchicalTab(tabName, data, container) {
     const totalTasks = projTasks.length;
     const doneTasks  = projTasks.filter(t => t.data['Status'] === 'Done').length;
     const pct = totalTasks > 0 ? Math.round(doneTasks / totalTasks * 100) : 0;
+    const hasSortOrder = projTasks.some(t => t.data['Sort_Order'] && parseInt(t.data['Sort_Order'], 10) > 0);
+    const sortedTasks = hasSortOrder
+      ? [...projTasks].sort((a, b) => parseInt(a.data['Sort_Order'] || '0', 10) - parseInt(b.data['Sort_Order'] || '0', 10))
+      : projTasks;
 
     html += `
       <div class="project-card" data-id="${esc(p['ID'])}" data-tab="${escAttr(tabName)}">
@@ -181,7 +210,7 @@ function renderHierarchicalTab(tabName, data, container) {
           </div>
         </div>
         <div class="task-list hidden" id="tl-${esc(p['ID'])}">
-          ${projTasks.map(t => renderTaskRow(t.data, tabName)).join('')}
+          ${sortedTasks.map(t => renderTaskRow(t.data, tabName)).join('')}
           <div class="add-task-row">
             <button class="btn btn-ghost btn-sm btn-add-task" data-tab="${escAttr(tabName)}" data-pid="${esc(p['ID'])}" data-pname="${escAttr(p['Name'])}">+ Add task</button>
           </div>
@@ -212,7 +241,8 @@ function renderTaskRow(d, tabName) {
   const isDone = d['Status'] === 'Done';
   const statusCls = { 'Inbox': 'badge-inbox', 'To Do': 'badge-todo', 'In Progress': 'badge-inprogress', 'Blocked': 'badge-blocked', 'Done': 'badge-done' }[d['Status']] || 'badge-todo';
   return `
-    <div class="task-row${isDone ? ' task-done' : ''}" data-id="${esc(d['ID'])}" data-tab="${escAttr(tabName)}">
+    <div class="task-row${isDone ? ' task-done' : ''}" draggable="true" data-id="${esc(d['ID'])}" data-tab="${escAttr(tabName)}">
+      <span class="drag-handle" title="Drag to reorder">⠿</span>
       <span class="task-name task-name-link${isDone ? ' task-name-strike' : ''}" data-id="${esc(d['ID'])}" data-tab="${escAttr(tabName)}">${esc(d['Name'])}</span>
       <span class="task-exec-date">${esc(formatDateForDisplay(d['Execution_Date'] || ''))}</span>
       <button class="badge ${statusCls} task-status-btn" data-id="${esc(d['ID'])}" data-tab="${escAttr(tabName)}" data-val="${escAttr(d['Status'] || 'To Do')}">${esc(d['Status'] || 'To Do')}</button>
@@ -248,6 +278,74 @@ function bindHierarchicalEvents(container, tabName) {
   container.querySelectorAll('.task-status-btn').forEach(btn =>
     btn.addEventListener('click', () => openStatus(btn.dataset.tab, btn.dataset.id, btn.dataset.val))
   );
+
+  // Drag and drop task reordering
+  container.querySelectorAll('.project-card').forEach(card => {
+    const taskList = card.querySelector('.task-list');
+    if (taskList) bindDragAndDrop(taskList, tabName, card.dataset.id);
+  });
+}
+
+// ─── Drag and drop reordering ─────────────────────────────────────────────────
+function bindDragAndDrop(taskList, tabName, projectId) {
+  taskList.querySelectorAll('.task-row').forEach(row => {
+    row.addEventListener('dragstart', e => {
+      dragState = { el: row, taskList, tabName, projectId };
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', row.dataset.id);
+    });
+
+    row.addEventListener('dragend', () => {
+      if (dragState) dragState.el.classList.remove('dragging');
+      taskList.querySelectorAll('.task-row').forEach(r =>
+        r.classList.remove('drag-over-top', 'drag-over-bottom')
+      );
+      dragState = null;
+    });
+
+    row.addEventListener('dragover', e => {
+      if (!dragState || dragState.el === row) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const rect = row.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      taskList.querySelectorAll('.task-row').forEach(r =>
+        r.classList.remove('drag-over-top', 'drag-over-bottom')
+      );
+      row.classList.add(before ? 'drag-over-top' : 'drag-over-bottom');
+    });
+
+    row.addEventListener('dragleave', e => {
+      if (!row.contains(e.relatedTarget))
+        row.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!dragState || dragState.el === row) return;
+      const rect = row.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      if (before) taskList.insertBefore(dragState.el, row);
+      else row.insertAdjacentElement('afterend', dragState.el);
+      row.classList.remove('drag-over-top', 'drag-over-bottom');
+      saveSortOrder(tabName, taskList);
+    });
+  });
+}
+
+function saveSortOrder(tabName, taskList) {
+  const rows = [...taskList.querySelectorAll('.task-row')];
+  const orders = rows.map((row, i) => ({ id: row.dataset.id, sortOrder: i + 1 }));
+  const cached = tabDataCache[tabName];
+  if (cached) {
+    orders.forEach(({ id, sortOrder }) => {
+      const row = cached.rows.find(r => r.data['ID'] === String(id));
+      if (row) row.data['Sort_Order'] = String(sortOrder);
+    });
+  }
+  gasPost({ action: 'updateSortOrder', tab: tabName, orders })
+    .catch(() => toast('Failed to save order'));
 }
 
 // ─── Flat tab (Inbox, Claude_Review, Archive) ─────────────────────────────────
@@ -450,7 +548,7 @@ function openTaskDetail(tab, id) {
   setTimeout(() => document.getElementById('detail-notes').focus(), 50);
 }
 
-async function saveTaskDetail() {
+function saveTaskDetail() {
   const { tab, id } = modalContext.detail || {};
   if (!tab || !id) return;
   const updates = {
@@ -471,37 +569,35 @@ async function saveTaskDetail() {
     Notes:              document.getElementById('detail-notes').value,
   };
 
-  setLoading('detail-save', true);
-  try {
-    const res = await api(`/api/row/${encodeURIComponent(tab)}/${encodeURIComponent(id)}`, {
-      method: 'PUT',
-      body: JSON.stringify({ updates }),
-    });
-    closeModal('modal-task-detail');
-    if (res.archived) {
-      toast('Done');
-      markTaskDone(tab, id);
-    } else {
-      toast('Task updated');
-      await loadTabData(currentTab);
-    }
-  } catch (err) {
-    toast('Error: ' + err.message);
-  } finally {
-    setLoading('detail-save', false);
+  const cached = tabDataCache[tab];
+  const row = cached?.rows.find(r => r.data['ID'] === String(id));
+  const oldData = row ? { ...row.data } : null;
+
+  // Optimistic: close modal and apply changes immediately
+  closeModal('modal-task-detail');
+  if (row) Object.assign(row.data, updates);
+  applyTaskRowToDOM(id, updates);
+  if (updates.Status === 'Done' && oldData?.Status !== 'Done') {
+    updateProjectProgress(tab, id);
+    checkProjectComplete(tab, id);
   }
+
+  gasPost({ action: 'updateRow', tab, id, updates })
+    .catch(() => {
+      if (row && oldData) Object.assign(row.data, oldData);
+      toast('Save failed — reloading');
+      loadTabData(currentTab);
+    });
 }
 
 // ─── Done task visual helpers ──────────────────────────────────────────────────
 function markTaskDone(tab, id) {
-  // Update the cache
   const cached = tabDataCache[tab];
   if (cached) {
     const row = cached.rows.find(r => r.data['ID'] === String(id));
     if (row) row.data['Status'] = 'Done';
   }
 
-  // Update the task row in the DOM
   const taskRow = document.querySelector(`.task-row[data-id="${id}"]`);
   if (taskRow) {
     taskRow.classList.add('task-done');
@@ -554,6 +650,39 @@ function checkProjectComplete(tab, id) {
   if (card) card.remove();
 }
 
+// ─── Optimistic UI helpers ────────────────────────────────────────────────────
+function setTaskStatusInDOM(id, status) {
+  const cls = {
+    'Inbox': 'badge-inbox', 'To Do': 'badge-todo',
+    'In Progress': 'badge-inprogress', 'Blocked': 'badge-blocked', 'Done': 'badge-done',
+  }[status] || 'badge-todo';
+  const btn = document.querySelector(`.task-status-btn[data-id="${id}"]`);
+  if (btn) {
+    btn.textContent = status;
+    btn.className = `badge ${cls} task-status-btn`;
+    btn.dataset.val = status;
+  }
+  const row = document.querySelector(`.task-row[data-id="${id}"]`);
+  if (row) {
+    row.classList.toggle('task-done', status === 'Done');
+    row.querySelector('.task-name')?.classList.toggle('task-name-strike', status === 'Done');
+  }
+}
+
+function applyTaskRowToDOM(id, data) {
+  const row = document.querySelector(`.task-row[data-id="${id}"]`);
+  if (!row) return;
+  if (data.Name !== undefined) {
+    const nameSpan = row.querySelector('.task-name');
+    if (nameSpan) nameSpan.textContent = data.Name;
+  }
+  if (data.Execution_Date !== undefined) {
+    const dateSpan = row.querySelector('.task-exec-date');
+    if (dateSpan) dateSpan.textContent = formatDateForDisplay(data.Execution_Date || '');
+  }
+  if (data.Status !== undefined) setTaskStatusInDOM(id, data.Status);
+}
+
 function openAddProject(tab) {
   modalContext.project = { tab };
   document.getElementById('project-name').value = '';
@@ -576,72 +705,89 @@ function openAddTask(tab, projectId, projectName) {
 }
 
 // ─── Save handlers ────────────────────────────────────────────────────────────
-async function saveCapture() {
+function saveCapture() {
   const name  = document.getElementById('capture-name').value.trim();
   const notes = document.getElementById('capture-notes').value.trim();
   if (!name) { document.getElementById('capture-name').focus(); return; }
 
-  setLoading('capture-save', true);
-  try {
-    await api('/api/inbox', { method: 'POST', body: JSON.stringify({ name, notes }) });
-    closeModal('modal-capture');
-    toast('Saved to Inbox');
-    if (currentTab === 'Inbox') await loadTabData('Inbox');
-  } catch (err) {
-    toast('Error: ' + err.message);
-  } finally {
-    setLoading('capture-save', false);
+  const tempId = 'temp-' + Date.now();
+  closeModal('modal-capture');
+  toast('Saved to Inbox');
+
+  if (currentTab === 'Inbox') {
+    const container = document.getElementById('main-content');
+    const header = container.querySelector('.flat-section-header');
+    const rowHtml = `
+      <div class="flat-row" data-id="${esc(tempId)}">
+        <div class="flat-row-body">
+          <div class="flat-row-name">${esc(name)}</div>
+          ${notes ? `<div class="flat-row-notes">${esc(notes)}</div>` : ''}
+        </div>
+        <div class="flat-row-date"></div>
+        <div class="flat-row-actions">
+          <button class="btn btn-ghost btn-sm btn-notes" data-id="${esc(tempId)}" data-val="${escAttr(notes)}">Notes</button>
+        </div>
+      </div>`;
+    if (header) header.insertAdjacentHTML('afterend', rowHtml);
+    else container.insertAdjacentHTML('beforeend', rowHtml);
   }
+
+  gasPost({ action: 'inbox', name, notes })
+    .then(() => { if (currentTab === 'Inbox') loadTabData('Inbox'); })
+    .catch(() => {
+      document.querySelector(`.flat-row[data-id="${tempId}"]`)?.remove();
+      toast('Save failed — not saved to Inbox');
+    });
 }
 
-async function saveStatus() {
+function saveStatus() {
   const { tab, id } = modalContext.status || {};
   if (!tab || !id) return;
-  const status = document.getElementById('status-value').value;
+  const newStatus = document.getElementById('status-value').value;
 
-  setLoading('status-save', true);
-  try {
-    const res = await api(`/api/row/${encodeURIComponent(tab)}/${encodeURIComponent(id)}`, {
-      method: 'PUT',
-      body: JSON.stringify({ updates: { Status: status } }),
-    });
-    closeModal('modal-status');
-    if (res.archived) {
-      toast('Done');
-      markTaskDone(tab, id);
-    } else {
-      toast('Status updated');
-      await loadTabData(currentTab);
-    }
-  } catch (err) {
-    toast('Error: ' + err.message);
-  } finally {
-    setLoading('status-save', false);
+  const cached = tabDataCache[tab];
+  const row = cached?.rows.find(r => r.data['ID'] === String(id));
+  const oldStatus = row?.data?.Status;
+
+  closeModal('modal-status');
+  if (row) row.data['Status'] = newStatus;
+  setTaskStatusInDOM(id, newStatus);
+  if (newStatus === 'Done') {
+    updateProjectProgress(tab, id);
+    checkProjectComplete(tab, id);
   }
+
+  gasPost({ action: 'updateRow', tab, id, updates: { Status: newStatus } })
+    .catch(() => {
+      if (row) row.data['Status'] = oldStatus;
+      toast('Save failed — reloading');
+      loadTabData(currentTab);
+    });
 }
 
-async function saveNotes() {
+function saveNotes() {
   const { tab, id } = modalContext.notes || {};
   if (!tab || !id) return;
   const notes = document.getElementById('notes-value').value;
 
-  setLoading('notes-save', true);
-  try {
-    await api(`/api/row/${encodeURIComponent(tab)}/${encodeURIComponent(id)}`, {
-      method: 'PUT',
-      body: JSON.stringify({ updates: { Notes: notes } }),
+  const cached = tabDataCache[tab];
+  const row = cached?.rows.find(r => String(r.data['ID'] || r.data['Review_ID']) === String(id));
+  const oldNotes = row?.data?.Notes;
+
+  closeModal('modal-notes');
+  if (row) row.data['Notes'] = notes;
+  const notesEl = document.querySelector(`.flat-row[data-id="${id}"] .flat-row-notes`);
+  if (notesEl) notesEl.textContent = notes;
+  toast('Notes saved');
+
+  gasPost({ action: 'updateRow', tab, id, updates: { Notes: notes } })
+    .catch(() => {
+      if (row) row.data['Notes'] = oldNotes;
+      toast('Save failed — reverted');
     });
-    closeModal('modal-notes');
-    toast('Notes saved');
-    await loadTabData(currentTab);
-  } catch (err) {
-    toast('Error: ' + err.message);
-  } finally {
-    setLoading('notes-save', false);
-  }
 }
 
-async function saveProject() {
+function saveProject() {
   const { tab } = modalContext.project || {};
   if (!tab) return;
   const name     = document.getElementById('project-name').value.trim();
@@ -650,23 +796,31 @@ async function saveProject() {
   const notes    = document.getElementById('project-notes').value.trim();
   if (!name) { document.getElementById('project-name').focus(); return; }
 
-  setLoading('project-save', true);
-  try {
-    await api(`/api/row/${encodeURIComponent(tab)}`, {
-      method: 'POST',
-      body: JSON.stringify({ data: { Type: 'PROJECT', Name: name, Status: status, Priority: priority, Notes: notes, Category: tab } }),
+  const tempId = 'temp-' + Date.now();
+  closeModal('modal-project');
+  toast('Project created');
+
+  document.getElementById('main-content').insertAdjacentHTML('beforeend', `
+    <div class="project-card" data-id="${esc(tempId)}" data-tab="${escAttr(tab)}">
+      <div class="project-header" data-project-id="${esc(tempId)}">
+        <span class="project-name">${esc(name)}</span>
+        <div class="project-progress-wrap">
+          <div class="project-progress-bar"><div class="project-progress-fill" style="width:0%"></div></div>
+          <span class="project-progress-label">0%</span>
+        </div>
+      </div>
+      <div class="task-list hidden" id="tl-${esc(tempId)}"></div>
+    </div>`);
+
+  gasPost({ action: 'addRow', tab, data: { Type: 'PROJECT', Name: name, Status: status, Priority: priority, Notes: notes, Category: tab } })
+    .then(() => loadTabData(currentTab))
+    .catch(() => {
+      document.querySelector(`.project-card[data-id="${tempId}"]`)?.remove();
+      toast('Save failed — project not created');
     });
-    closeModal('modal-project');
-    toast('Project created');
-    await loadTabData(currentTab);
-  } catch (err) {
-    toast('Error: ' + err.message);
-  } finally {
-    setLoading('project-save', false);
-  }
 }
 
-async function saveTask() {
+function saveTask() {
   const { tab, projectId } = modalContext.task || {};
   if (!tab) return;
   const name          = document.getElementById('task-name').value.trim();
@@ -675,20 +829,33 @@ async function saveTask() {
   const notes         = document.getElementById('task-notes').value.trim();
   if (!name) { document.getElementById('task-name').focus(); return; }
 
-  setLoading('task-save', true);
-  try {
-    await api(`/api/row/${encodeURIComponent(tab)}`, {
-      method: 'POST',
-      body: JSON.stringify({ data: { Type: 'TASK', Parent_ID: projectId || '', Name: name, Status: status, Priority: 'Medium', Execution_Date: formatDateForSheet(executionDate), Notes: notes, Category: tab } }),
-    });
-    closeModal('modal-task');
-    toast('Task added');
-    await loadTabData(currentTab);
-  } catch (err) {
-    toast('Error: ' + err.message);
-  } finally {
-    setLoading('task-save', false);
+  const tempId  = 'temp-' + Date.now();
+  const cls     = { 'To Do': 'badge-todo', 'In Progress': 'badge-inprogress', 'Blocked': 'badge-blocked' }[status] || 'badge-todo';
+  const dateStr = formatDateForSheet(executionDate);
+
+  closeModal('modal-task');
+  toast('Task added');
+
+  const taskList = projectId ? document.getElementById(`tl-${projectId}`) : null;
+  if (taskList) {
+    taskList.classList.remove('hidden');
+    const addRow = taskList.querySelector('.add-task-row');
+    const rowHtml = `
+      <div class="task-row" data-id="${esc(tempId)}" data-tab="${escAttr(tab)}">
+        <span class="task-name task-name-link" data-id="${esc(tempId)}" data-tab="${escAttr(tab)}">${esc(name)}</span>
+        <span class="task-exec-date">${esc(formatDateForDisplay(dateStr))}</span>
+        <button class="badge ${cls} task-status-btn" data-id="${esc(tempId)}" data-tab="${escAttr(tab)}" data-val="${escAttr(status)}">${esc(status)}</button>
+      </div>`;
+    if (addRow) addRow.insertAdjacentHTML('beforebegin', rowHtml);
+    else taskList.insertAdjacentHTML('beforeend', rowHtml);
   }
+
+  gasPost({ action: 'addRow', tab, data: { Type: 'TASK', Parent_ID: projectId || '', Name: name, Status: status, Priority: 'Medium', Execution_Date: dateStr, Notes: notes, Category: tab } })
+    .then(() => loadTabData(currentTab))
+    .catch(() => {
+      document.querySelector(`.task-row[data-id="${tempId}"]`)?.remove();
+      toast('Save failed — task not added');
+    });
 }
 
 function setLoading(btnId, loading) {
@@ -777,9 +944,53 @@ function setupEventListeners() {
   document.addEventListener('mouseup',  () => { tcDrag = null; });
   document.addEventListener('touchend', () => { tcDrag = null; });
 
-  // Logout
-  document.getElementById('btn-logout').addEventListener('click', () => {
-    window.location.href = '/auth/logout';
+  // Touch drag for task reordering (fires only when drag handle is touched)
+  document.addEventListener('touchstart', e => {
+    if (!e.target.closest('.drag-handle')) return;
+    const row = e.target.closest('.task-row');
+    if (!row) return;
+    const taskList = row.closest('.task-list');
+    if (!taskList) return;
+    e.preventDefault();
+    touchDragState = { el: row, taskList, tabName: row.dataset.tab, dropTarget: null, dropBefore: false };
+    row.classList.add('dragging');
+  }, { passive: false });
+
+  document.addEventListener('touchmove', e => {
+    if (!touchDragState) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const { el, taskList } = touchDragState;
+    taskList.querySelectorAll('.task-row').forEach(r =>
+      r.classList.remove('drag-over-top', 'drag-over-bottom')
+    );
+    let dropTarget = null, dropBefore = false;
+    taskList.querySelectorAll('.task-row').forEach(r => {
+      if (r === el) return;
+      const rect = r.getBoundingClientRect();
+      if (touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+        dropTarget = r;
+        dropBefore = touch.clientY < rect.top + rect.height / 2;
+      }
+    });
+    if (dropTarget) dropTarget.classList.add(dropBefore ? 'drag-over-top' : 'drag-over-bottom');
+    touchDragState.dropTarget = dropTarget;
+    touchDragState.dropBefore = dropBefore;
+  }, { passive: false });
+
+  document.addEventListener('touchend', () => {
+    if (!touchDragState) return;
+    const { el, taskList, tabName, dropTarget, dropBefore } = touchDragState;
+    if (dropTarget) {
+      if (dropBefore) taskList.insertBefore(el, dropTarget);
+      else dropTarget.insertAdjacentElement('afterend', el);
+      taskList.querySelectorAll('.task-row').forEach(r =>
+        r.classList.remove('drag-over-top', 'drag-over-bottom')
+      );
+      saveSortOrder(tabName, taskList);
+    }
+    el.classList.remove('dragging');
+    touchDragState = null;
   });
 
   // Close modals via Cancel buttons
@@ -818,20 +1029,18 @@ function setupEventListeners() {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
   try {
-    const me = await api('/api/me');
-    if (!me) return; // 401 already handled — login screen shown
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-
-    tabs = await api('/api/tabs') || [];
+    tabs = await gasGet({ action: 'tabs' });
     renderTabNav();
-
     if (tabs.length > 0) await switchTab(tabs[0]);
-
     setupEventListeners();
-  } catch {
-    document.getElementById('login-screen').classList.remove('hidden');
-    document.getElementById('app').classList.add('hidden');
+    // Prefetch all other tabs in the background
+    tabs.forEach(tab => {
+      if (tabDataCache[tab]) return;
+      gasGet({ action: 'data', tab }).then(data => { tabDataCache[tab] = data; }).catch(() => {});
+    });
+  } catch (err) {
+    document.getElementById('main-content').innerHTML =
+      `<div class="loading">Failed to connect to backend: ${esc(err.message)}</div>`;
   }
 }
 
