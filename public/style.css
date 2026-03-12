@@ -618,16 +618,16 @@ header {
   letter-spacing: 0.5px;
 }
 
-/* ─── Drag and drop ─────────────────────────────────────────────────────────── */
+/* ─── Drag handle & sortable ─────────────────────────────────────────────────── */
 .drag-handle {
-  cursor: grab;
-  color: #bdc1c6;
-  font-size: 14px;
+  width: 10px;
+  height: 10px;
+  background: #dadce0;
+  border-radius: 1px;
   flex-shrink: 0;
+  cursor: grab;
   opacity: 0;
-  user-select: none;
-  line-height: 1;
-  padding: 0 2px;
+  transition: opacity 0.15s;
 }
 
 .task-row:hover .drag-handle { opacity: 1; }
@@ -636,9 +636,7 @@ header {
   .drag-handle { opacity: 0.5; }
 }
 
-.task-row.dragging { opacity: 0.4; }
-.task-row.drag-over-top    { border-top: 2px solid #1a73e8; }
-.task-row.drag-over-bottom { border-bottom: 2px solid #1a73e8; }
+.sortable-ghost { opacity: 0.35; background: #e8f0fe; }
 
 /* ─── Utility ───────────────────────────────────────────────────────────────── */
 .hidden { display: none !important; }

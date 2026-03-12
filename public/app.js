@@ -7,8 +7,6 @@ let currentTab = null;
 let tabs = [];
 let modalContext = {}; // Stores context for open modals
 let tabDataCache = {}; // Cache of last-loaded data per tab
-let dragState = null;      // HTML5 drag state for task reordering
-let touchDragState = null; // Touch drag state for task reordering
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 async function gasGet(params) {
@@ -241,8 +239,8 @@ function renderTaskRow(d, tabName) {
   const isDone = d['Status'] === 'Done';
   const statusCls = { 'Inbox': 'badge-inbox', 'To Do': 'badge-todo', 'In Progress': 'badge-inprogress', 'Blocked': 'badge-blocked', 'Done': 'badge-done' }[d['Status']] || 'badge-todo';
   return `
-    <div class="task-row${isDone ? ' task-done' : ''}" draggable="true" data-id="${esc(d['ID'])}" data-tab="${escAttr(tabName)}">
-      <span class="drag-handle" title="Drag to reorder">⠿</span>
+    <div class="task-row${isDone ? ' task-done' : ''}" data-id="${esc(d['ID'])}" data-tab="${escAttr(tabName)}">
+      <span class="drag-handle"></span>
       <span class="task-name task-name-link${isDone ? ' task-name-strike' : ''}" data-id="${esc(d['ID'])}" data-tab="${escAttr(tabName)}">${esc(d['Name'])}</span>
       <span class="task-exec-date">${esc(formatDateForDisplay(d['Execution_Date'] || ''))}</span>
       <button class="badge ${statusCls} task-status-btn" data-id="${esc(d['ID'])}" data-tab="${escAttr(tabName)}" data-val="${escAttr(d['Status'] || 'To Do')}">${esc(d['Status'] || 'To Do')}</button>
@@ -279,58 +277,21 @@ function bindHierarchicalEvents(container, tabName) {
     btn.addEventListener('click', () => openStatus(btn.dataset.tab, btn.dataset.id, btn.dataset.val))
   );
 
-  // Drag and drop task reordering
+  // Sortable task reordering
   container.querySelectorAll('.project-card').forEach(card => {
     const taskList = card.querySelector('.task-list');
-    if (taskList) bindDragAndDrop(taskList, tabName, card.dataset.id);
+    if (taskList) initSortable(taskList, tabName);
   });
 }
 
-// ─── Drag and drop reordering ─────────────────────────────────────────────────
-function bindDragAndDrop(taskList, tabName, projectId) {
-  taskList.querySelectorAll('.task-row').forEach(row => {
-    row.addEventListener('dragstart', e => {
-      dragState = { el: row, taskList, tabName, projectId };
-      row.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', row.dataset.id);
-    });
-
-    row.addEventListener('dragend', () => {
-      if (dragState) dragState.el.classList.remove('dragging');
-      taskList.querySelectorAll('.task-row').forEach(r =>
-        r.classList.remove('drag-over-top', 'drag-over-bottom')
-      );
-      dragState = null;
-    });
-
-    row.addEventListener('dragover', e => {
-      if (!dragState || dragState.el === row) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      const rect = row.getBoundingClientRect();
-      const before = e.clientY < rect.top + rect.height / 2;
-      taskList.querySelectorAll('.task-row').forEach(r =>
-        r.classList.remove('drag-over-top', 'drag-over-bottom')
-      );
-      row.classList.add(before ? 'drag-over-top' : 'drag-over-bottom');
-    });
-
-    row.addEventListener('dragleave', e => {
-      if (!row.contains(e.relatedTarget))
-        row.classList.remove('drag-over-top', 'drag-over-bottom');
-    });
-
-    row.addEventListener('drop', e => {
-      e.preventDefault();
-      if (!dragState || dragState.el === row) return;
-      const rect = row.getBoundingClientRect();
-      const before = e.clientY < rect.top + rect.height / 2;
-      if (before) taskList.insertBefore(dragState.el, row);
-      else row.insertAdjacentElement('afterend', dragState.el);
-      row.classList.remove('drag-over-top', 'drag-over-bottom');
-      saveSortOrder(tabName, taskList);
-    });
+// ─── Sortable task reordering ─────────────────────────────────────────────────
+function initSortable(taskList, tabName) {
+  Sortable.create(taskList, {
+    handle: '.drag-handle',
+    draggable: '.task-row',
+    animation: 120,
+    ghostClass: 'sortable-ghost',
+    onEnd: () => saveSortOrder(tabName, taskList),
   });
 }
 
@@ -943,55 +904,6 @@ function setupEventListeners() {
 
   document.addEventListener('mouseup',  () => { tcDrag = null; });
   document.addEventListener('touchend', () => { tcDrag = null; });
-
-  // Touch drag for task reordering (fires only when drag handle is touched)
-  document.addEventListener('touchstart', e => {
-    if (!e.target.closest('.drag-handle')) return;
-    const row = e.target.closest('.task-row');
-    if (!row) return;
-    const taskList = row.closest('.task-list');
-    if (!taskList) return;
-    e.preventDefault();
-    touchDragState = { el: row, taskList, tabName: row.dataset.tab, dropTarget: null, dropBefore: false };
-    row.classList.add('dragging');
-  }, { passive: false });
-
-  document.addEventListener('touchmove', e => {
-    if (!touchDragState) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    const { el, taskList } = touchDragState;
-    taskList.querySelectorAll('.task-row').forEach(r =>
-      r.classList.remove('drag-over-top', 'drag-over-bottom')
-    );
-    let dropTarget = null, dropBefore = false;
-    taskList.querySelectorAll('.task-row').forEach(r => {
-      if (r === el) return;
-      const rect = r.getBoundingClientRect();
-      if (touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
-        dropTarget = r;
-        dropBefore = touch.clientY < rect.top + rect.height / 2;
-      }
-    });
-    if (dropTarget) dropTarget.classList.add(dropBefore ? 'drag-over-top' : 'drag-over-bottom');
-    touchDragState.dropTarget = dropTarget;
-    touchDragState.dropBefore = dropBefore;
-  }, { passive: false });
-
-  document.addEventListener('touchend', () => {
-    if (!touchDragState) return;
-    const { el, taskList, tabName, dropTarget, dropBefore } = touchDragState;
-    if (dropTarget) {
-      if (dropBefore) taskList.insertBefore(el, dropTarget);
-      else dropTarget.insertAdjacentElement('afterend', el);
-      taskList.querySelectorAll('.task-row').forEach(r =>
-        r.classList.remove('drag-over-top', 'drag-over-bottom')
-      );
-      saveSortOrder(tabName, taskList);
-    }
-    el.classList.remove('dragging');
-    touchDragState = null;
-  });
 
   // Close modals via Cancel buttons
   document.querySelectorAll('.modal-cancel').forEach(btn =>

@@ -5,20 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Task Manager</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1a73e8">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
 </head>
 <body>
 
-  <!-- Login screen -->
-  <div id="login-screen">
-    <div class="login-box">
-      <div class="login-logo">Task Manager</div>
-      <p class="login-subtitle">Sign in to access your tasks</p>
-      <a href="/auth/google" class="btn btn-primary btn-signin">Sign in with Google</a>
-    </div>
-  </div>
-
   <!-- Main app -->
-  <div id="app" class="hidden">
+  <div id="app">
 
     <header>
       <div class="header-left">
@@ -27,7 +21,6 @@
       <div class="header-right">
         <button id="btn-quick-capture" class="btn btn-secondary">+ Quick Capture</button>
         <button id="btn-reload" class="btn btn-outline">Reload</button>
-        <button id="btn-logout" class="btn btn-ghost">Sign out</button>
       </div>
     </header>
 
@@ -247,6 +240,12 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
   <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+  </script>
 </body>
 </html>
