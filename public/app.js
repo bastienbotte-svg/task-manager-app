@@ -248,12 +248,17 @@ function renderTaskRow(d, tabName) {
 }
 
 function bindHierarchicalEvents(container, tabName) {
-  // Collapse / expand — click anywhere on header
+  // Collapse / expand — click anywhere on header; init Sortable on first expand
   container.querySelectorAll('.project-header').forEach(hdr => {
     hdr.addEventListener('click', () => {
       const pid = hdr.dataset.projectId;
       const tl = document.getElementById(`tl-${pid}`);
-      if (tl) tl.classList.toggle('hidden');
+      if (!tl) return;
+      const expanding = tl.classList.contains('hidden');
+      tl.classList.toggle('hidden');
+      if (expanding && !tl._sortable) {
+        tl._sortable = initSortable(tl, tabName);
+      }
     });
   });
 
@@ -277,16 +282,11 @@ function bindHierarchicalEvents(container, tabName) {
     btn.addEventListener('click', () => openStatus(btn.dataset.tab, btn.dataset.id, btn.dataset.val))
   );
 
-  // Sortable task reordering
-  container.querySelectorAll('.project-card').forEach(card => {
-    const taskList = card.querySelector('.task-list');
-    if (taskList) initSortable(taskList, tabName);
-  });
 }
 
 // ─── Sortable task reordering ─────────────────────────────────────────────────
 function initSortable(taskList, tabName) {
-  Sortable.create(taskList, {
+  return Sortable.create(taskList, {
     handle: '.drag-handle',
     draggable: '.task-row',
     animation: 120,
