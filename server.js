@@ -76,7 +76,10 @@ app.get('/auth/google/callback', async (req, res) => {
     const client = createOAuth2Client();
     const { tokens } = await client.getToken(code);
     req.session.tokens = tokens;
-    res.redirect('/');
+    req.session.save(err => {
+      if (err) return res.redirect('/?error=session_failed');
+      res.redirect('/');
+    });
   } catch (err) {
     console.error('OAuth callback error:', err.message);
     res.redirect('/?error=auth_failed');
