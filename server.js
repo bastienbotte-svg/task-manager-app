@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const FileStore = require('session-file-store')(session);
 const { google } = require('googleapis');
 const path = require('path');
 
@@ -23,14 +24,21 @@ const SCOPES = [
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+const isProd = process.env.NODE_ENV === 'production';
 app.use(session({
+  store: new FileStore({
+    path: '/tmp/sessions',
+    ttl: 7 * 24 * 60 * 60,  // 7 days in seconds
+    retries: 1,
+    logFn: () => {},         // suppress noisy file-store logs
+  }),
   secret: process.env.SESSION_SECRET || 'tm-session-secret-dev',
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   },
 }));
