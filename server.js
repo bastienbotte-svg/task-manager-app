@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const session = require('express-session');
-const FileStore = require('session-file-store')(session);
+const cookieSession = require('cookie-session');
 const { google } = require('googleapis');
 const path = require('path');
 
@@ -25,22 +24,15 @@ const SCOPES = [
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 const isProd = process.env.NODE_ENV === 'production';
-app.use(session({
-  store: new FileStore({
-    path: '/tmp/sessions',
-    ttl: 7 * 24 * 60 * 60,  // 7 days in seconds
-    retries: 1,
-    logFn: () => {},         // suppress noisy file-store logs
-  }),
-  secret: process.env.SESSION_SECRET || 'tm-session-secret-dev',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  },
+// cookie-session stores all data in the signed cookie itself —
+// no server-side store, no async writes, survives restarts
+app.use(cookieSession({
+  name: 'tm_session',
+  keys: [process.env.SESSION_SECRET || 'tm-session-secret-dev'],
+  httpOnly: true,
+  secure: isProd,
+  sameSite: isProd ? 'none' : 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 }));
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
@@ -76,10 +68,7 @@ app.get('/auth/google/callback', async (req, res) => {
     const client = createOAuth2Client();
     const { tokens } = await client.getToken(code);
     req.session.tokens = tokens;
-    req.session.save(err => {
-      if (err) return res.redirect('/?error=session_failed');
-      res.redirect('/');
-    });
+    res.redirect('/');
   } catch (err) {
     console.error('OAuth callback error:', err.message);
     res.redirect('/?error=auth_failed');
