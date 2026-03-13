@@ -130,17 +130,48 @@ function renderTabNav() {
   );
 }
 
-function dataAction(tabName) {
-  return FLAT_TABS.has(tabName) ? 'data' : 'dataWithArchived';
+// For hierarchical tabs: fetch main tab + Archive in parallel, merge archived
+// tasks whose Parent_ID matches a project still in the main tab.
+async function fetchHierarchicalData(tabName) {
+  const [mainData, archiveData] = await Promise.all([
+    gasGet({ action: 'data', tab: tabName }),
+    gasGet({ action: 'data', tab: 'Archive' }),
+  ]);
+
+  // Build set of project IDs that are still active (not yet archived)
+  const activeProjectIds = new Set(
+    mainData.rows
+      .filter(r => r.data['Type'] === 'PROJECT')
+      .map(r => String(r.data['ID']))
+  );
+
+  // Find archived tasks whose parent project is still in the main tab.
+  // Force Type='TASK' in case Archive tab doesn't store that column.
+  const archivedTasks = archiveData.rows
+    .filter(r => {
+      const pid = r.data['Parent_ID'];
+      return pid && activeProjectIds.has(String(pid));
+    })
+    .map(r => ({
+      rowIndex: r.rowIndex,
+      data: { ...r.data, Type: 'TASK', Status: r.data['Status'] || 'Done' },
+    }));
+
+  console.log(`[TM] ${tabName}: ${mainData.rows.length} active rows + ${archivedTasks.length} archived tasks`);
+
+  return { headers: mainData.headers, rows: [...mainData.rows, ...archivedTasks] };
 }
 
 async function switchTab(tabName) {
   currentTab = tabName;
   renderTabNav();
+  const fetchData = () => FLAT_TABS.has(tabName)
+    ? gasGet({ action: 'data', tab: tabName })
+    : fetchHierarchicalData(tabName);
   if (tabDataCache[tabName]) {
     // Instant render from cache, then silently refresh in background
     renderTabContent(tabName, tabDataCache[tabName]);
-    gasGet({ action: dataAction(tabName), tab: tabName })
+    fetchData()
       .then(data => {
         tabDataCache[tabName] = data;
         if (currentTab === tabName) renderTabContent(tabName, data);
@@ -155,7 +186,9 @@ async function loadTabData(tabName) {
   const main = document.getElementById('main-content');
   main.innerHTML = '<div class="loading"><span class="spinner"></span> Loading...</div>';
   try {
-    const data = await gasGet({ action: dataAction(tabName), tab: tabName });
+    const data = FLAT_TABS.has(tabName)
+      ? await gasGet({ action: 'data', tab: tabName })
+      : await fetchHierarchicalData(tabName);
     tabDataCache[tabName] = data;
     renderTabContent(tabName, data);
   } catch (err) {
@@ -959,7 +992,10 @@ async function init() {
     // Prefetch all other tabs in the background
     tabs.forEach(tab => {
       if (tabDataCache[tab]) return;
-      gasGet({ action: dataAction(tab), tab }).then(data => { tabDataCache[tab] = data; }).catch(() => {});
+      const fetch = FLAT_TABS.has(tab)
+        ? gasGet({ action: 'data', tab })
+        : fetchHierarchicalData(tab);
+      fetch.then(data => { tabDataCache[tab] = data; }).catch(() => {});
     });
   } catch (err) {
     document.getElementById('main-content').innerHTML =
