@@ -15,9 +15,10 @@ function doGet(e) {
     var action = e.parameter.action;
     var result;
     switch (action) {
-      case 'tabs': result = getTabs(); break;
-      case 'data': result = getData(e.parameter.tab); break;
-      default:     result = { error: 'Unknown action: ' + action };
+      case 'tabs':            result = getTabs(); break;
+      case 'data':            result = getData(e.parameter.tab); break;
+      case 'dataWithArchived': result = getDataWithArchived(e.parameter.tab); break;
+      default:                result = { error: 'Unknown action: ' + action };
     }
     return jsonResponse(result);
   } catch (err) {
@@ -89,6 +90,30 @@ function getData(tabName) {
     if (hasData) dataRows.push({ rowIndex: i + 1, data: data });
   }
   return { headers: headers, rows: dataRows };
+}
+
+// Returns main tab data merged with archived tasks whose parent project is still active in that tab.
+// This lets the frontend show Done tasks with strikethrough until ALL tasks in a project are Done.
+function getDataWithArchived(tabName) {
+  var mainData    = getData(tabName);
+  var archiveData = getData('Archive');
+
+  // Collect IDs of projects that are still in the main tab
+  var activeProjectIds = {};
+  mainData.rows.forEach(function(r) {
+    if (r.data['Type'] === 'PROJECT') {
+      activeProjectIds[String(r.data['ID'])] = true;
+    }
+  });
+
+  // Include archived tasks whose parent project is still active (project not yet archived)
+  var archivedTasks = archiveData.rows.filter(function(r) {
+    return r.data['Type'] === 'TASK' &&
+           r.data['Parent_ID'] &&
+           activeProjectIds[String(r.data['Parent_ID'])];
+  });
+
+  return { headers: mainData.headers, rows: mainData.rows.concat(archivedTasks) };
 }
 
 function today() {

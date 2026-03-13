@@ -130,13 +130,17 @@ function renderTabNav() {
   );
 }
 
+function dataAction(tabName) {
+  return FLAT_TABS.has(tabName) ? 'data' : 'dataWithArchived';
+}
+
 async function switchTab(tabName) {
   currentTab = tabName;
   renderTabNav();
   if (tabDataCache[tabName]) {
     // Instant render from cache, then silently refresh in background
     renderTabContent(tabName, tabDataCache[tabName]);
-    gasGet({ action: 'data', tab: tabName })
+    gasGet({ action: dataAction(tabName), tab: tabName })
       .then(data => {
         tabDataCache[tabName] = data;
         if (currentTab === tabName) renderTabContent(tabName, data);
@@ -151,7 +155,7 @@ async function loadTabData(tabName) {
   const main = document.getElementById('main-content');
   main.innerHTML = '<div class="loading"><span class="spinner"></span> Loading...</div>';
   try {
-    const data = await gasGet({ action: 'data', tab: tabName });
+    const data = await gasGet({ action: dataAction(tabName), tab: tabName });
     tabDataCache[tabName] = data;
     renderTabContent(tabName, data);
   } catch (err) {
@@ -238,12 +242,19 @@ function renderHierarchicalTab(tabName, data, container) {
 function renderTaskRow(d, tabName) {
   const isDone = d['Status'] === 'Done';
   const statusCls = { 'Inbox': 'badge-inbox', 'To Do': 'badge-todo', 'In Progress': 'badge-inprogress', 'Blocked': 'badge-blocked', 'Done': 'badge-done' }[d['Status']] || 'badge-todo';
+  // Done tasks are archived — render as read-only (no clickable name or status button)
+  const nameEl   = isDone
+    ? `<span class="task-name task-name-strike">${esc(d['Name'])}</span>`
+    : `<span class="task-name task-name-link" data-id="${esc(d['ID'])}" data-tab="${escAttr(tabName)}">${esc(d['Name'])}</span>`;
+  const statusEl = isDone
+    ? `<span class="badge ${statusCls}">${esc(d['Status'])}</span>`
+    : `<button class="badge ${statusCls} task-status-btn" data-id="${esc(d['ID'])}" data-tab="${escAttr(tabName)}" data-val="${escAttr(d['Status'] || 'To Do')}">${esc(d['Status'] || 'To Do')}</button>`;
   return `
     <div class="task-row${isDone ? ' task-done' : ''}" data-id="${esc(d['ID'])}" data-tab="${escAttr(tabName)}">
       <span class="drag-handle"></span>
-      <span class="task-name task-name-link${isDone ? ' task-name-strike' : ''}" data-id="${esc(d['ID'])}" data-tab="${escAttr(tabName)}">${esc(d['Name'])}</span>
+      ${nameEl}
       <span class="task-exec-date">${esc(formatDateForDisplay(d['Execution_Date'] || ''))}</span>
-      <button class="badge ${statusCls} task-status-btn" data-id="${esc(d['ID'])}" data-tab="${escAttr(tabName)}" data-val="${escAttr(d['Status'] || 'To Do')}">${esc(d['Status'] || 'To Do')}</button>
+      ${statusEl}
     </div>`;
 }
 
@@ -948,7 +959,7 @@ async function init() {
     // Prefetch all other tabs in the background
     tabs.forEach(tab => {
       if (tabDataCache[tab]) return;
-      gasGet({ action: 'data', tab }).then(data => { tabDataCache[tab] = data; }).catch(() => {});
+      gasGet({ action: dataAction(tab), tab }).then(data => { tabDataCache[tab] = data; }).catch(() => {});
     });
   } catch (err) {
     document.getElementById('main-content').innerHTML =
