@@ -353,7 +353,7 @@ function saveSortOrder(tabName, taskList) {
     .catch(() => toast('Failed to save order'));
 }
 
-// ─── Flat tab (Inbox, Claude_Review, Archive) ─────────────────────────────────
+// ─── Flat tab (Inbox, Michel_Review, Archive) ─────────────────────────────────
 function renderFlatTab(tabName, data, container) {
   const { headers, rows } = data;
   let html = '';
