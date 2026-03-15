@@ -117,7 +117,7 @@ function priorityBadge(priority) {
 }
 
 // Tabs that show a flat list (no PROJECT/TASK hierarchy)
-const FLAT_TABS = new Set(['Inbox', 'Michel_Review', 'Archive']);
+const FLAT_TABS = new Set(['Inbox', 'Michel_Review', 'Archive', 'Social']);
 
 // ─── Tab navigation ───────────────────────────────────────────────────────────
 function renderTabNav() {
@@ -199,7 +199,9 @@ async function loadTabData(tabName) {
 // ─── Render dispatch ──────────────────────────────────────────────────────────
 function renderTabContent(tabName, data) {
   const main = document.getElementById('main-content');
-  if (FLAT_TABS.has(tabName)) {
+  if (tabName === 'Social') {
+    renderSocialTab(tabName, data, main);
+  } else if (FLAT_TABS.has(tabName)) {
     renderFlatTab(tabName, data, main);
   } else {
     renderHierarchicalTab(tabName, data, main);
@@ -407,6 +409,40 @@ function renderFlatTab(tabName, data, container) {
 
   container.querySelectorAll('.btn-notes').forEach(btn =>
     btn.addEventListener('click', () => openNotes(btn.dataset.tab, btn.dataset.id, btn.dataset.val))
+  );
+}
+
+// ─── Social tab (flat individual tasks) ───────────────────────────────────────
+function renderSocialTab(tabName, data, container) {
+  const { rows } = data;
+
+  let html = `
+    <div class="tab-toolbar">
+      <button class="btn btn-secondary btn-sm btn-add-social-task" data-tab="${escAttr(tabName)}">+ Add Task</button>
+    </div>`;
+
+  if (rows.length === 0) {
+    html += '<div class="empty-state">No tasks yet. Add your first task above.</div>';
+  } else {
+    const hasSortOrder = rows.some(r => r.data['Sort_Order'] && parseInt(r.data['Sort_Order'], 10) > 0);
+    const sorted = hasSortOrder
+      ? [...rows].sort((a, b) => parseInt(a.data['Sort_Order'] || '0', 10) - parseInt(b.data['Sort_Order'] || '0', 10))
+      : rows;
+    html += `<div class="task-list" id="social-task-list">`;
+    html += sorted.map(r => renderTaskRow(r.data, tabName)).join('');
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+
+  container.querySelectorAll('.task-name-link').forEach(span =>
+    span.addEventListener('click', () => openTaskDetail(span.dataset.tab, span.dataset.id))
+  );
+  container.querySelectorAll('.task-status-btn').forEach(btn =>
+    btn.addEventListener('click', () => openStatus(btn.dataset.tab, btn.dataset.id, btn.dataset.val))
+  );
+  container.querySelector('.btn-add-social-task')?.addEventListener('click', () =>
+    openAddTask(tabName, '', '')
   );
 }
 
@@ -700,7 +736,14 @@ function openAddProject(tab) {
 
 function openAddTask(tab, projectId, projectName) {
   modalContext.task = { tab, projectId };
-  document.getElementById('task-context-label').textContent = `Project: ${projectName || ''}`;
+  const label = document.getElementById('task-context-label');
+  if (projectName) {
+    label.textContent = `Project: ${projectName}`;
+    label.style.display = '';
+  } else {
+    label.textContent = '';
+    label.style.display = 'none';
+  }
   document.getElementById('task-name').value = '';
   document.getElementById('task-status').value = 'To Do';
   document.getElementById('task-execution-date').value = '';
