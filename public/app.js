@@ -369,6 +369,32 @@ function renderFlatTab(tabName, data, container) {
 
   if (rows.length === 0) {
     html += '<div class="empty-state">Nothing here yet.</div>';
+  } else if (tabName === 'Michel_Review') {
+    for (const row of rows) {
+      const d = row.data;
+      const id            = d['ID'] || d['Review_ID'] || '';
+      const name          = d['Name'] || d['Reference_Name'] || '(no name)';
+      const reviewNote    = d['Review_Note'] || d['Notes'] || '';
+      const reviewAnswer  = d['Review_Answer'] || '';
+      const confirmed     = d['Review_Confirmed'] === 'TRUE';
+      const dateVal       = d['Review_Date'] || d['Created_Date'] || '';
+
+      html += `
+        <div class="flat-row" data-id="${esc(id)}" data-tab="${escAttr(tabName)}">
+          <div class="flat-row-body">
+            <div class="flat-row-name">${esc(name)}</div>
+            ${reviewNote ? `<div class="flat-row-notes">${esc(reviewNote)}</div>` : ''}
+            <textarea class="review-answer-input" data-id="${esc(id)}" rows="2" placeholder="Your answer...">${esc(reviewAnswer)}</textarea>
+            <div class="review-row-footer">
+              <label class="review-confirmed-label">
+                <input type="checkbox" class="review-confirmed-cb" data-id="${esc(id)}"${confirmed ? ' checked' : ''}> Confirmed
+              </label>
+              <button class="btn btn-primary btn-sm review-save-btn" data-id="${esc(id)}">Save</button>
+            </div>
+          </div>
+          <div class="flat-row-date">${esc(formatDateForDisplay(dateVal))}</div>
+        </div>`;
+    }
   } else {
     for (const row of rows) {
       const d = row.data;
@@ -407,9 +433,18 @@ function renderFlatTab(tabName, data, container) {
     document.getElementById('btn-add-inbox')?.addEventListener('click', openCapture);
   }
 
-  container.querySelectorAll('.btn-notes').forEach(btn =>
-    btn.addEventListener('click', () => openNotes(btn.dataset.tab, btn.dataset.id, btn.dataset.val))
-  );
+  if (tabName === 'Michel_Review') {
+    container.querySelectorAll('.review-save-btn').forEach(btn =>
+      btn.addEventListener('click', () => saveMichelReviewRow(tabName, btn.dataset.id))
+    );
+    container.querySelectorAll('.review-confirmed-cb').forEach(cb =>
+      cb.addEventListener('change', () => saveMichelReviewRow(tabName, cb.dataset.id))
+    );
+  } else {
+    container.querySelectorAll('.btn-notes').forEach(btn =>
+      btn.addEventListener('click', () => openNotes(btn.dataset.tab, btn.dataset.id, btn.dataset.val))
+    );
+  }
 }
 
 // ─── Social tab (flat individual tasks) ───────────────────────────────────────
@@ -833,6 +868,24 @@ function saveNotes() {
       if (row) row.data['Notes'] = oldNotes;
       toast('Save failed — reverted');
     });
+}
+
+function saveMichelReviewRow(tab, id) {
+  const rowEl = document.querySelector(`.flat-row[data-id="${id}"][data-tab="${tab}"]`);
+  if (!rowEl) return;
+  const answer    = rowEl.querySelector('.review-answer-input')?.value ?? '';
+  const confirmed = rowEl.querySelector('.review-confirmed-cb')?.checked ? 'TRUE' : 'FALSE';
+
+  const cached = tabDataCache[tab];
+  const row = cached?.rows.find(r => String(r.data['ID'] || r.data['Review_ID']) === String(id));
+  if (row) {
+    row.data['Review_Answer']    = answer;
+    row.data['Review_Confirmed'] = confirmed;
+  }
+
+  gasPost({ action: 'updateRow', tab, id, updates: { Review_Answer: answer, Review_Confirmed: confirmed } })
+    .then(() => toast('Saved'))
+    .catch(() => toast('Save failed'));
 }
 
 function saveProject() {
