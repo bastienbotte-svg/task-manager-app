@@ -224,7 +224,14 @@ function renderHierarchicalTab(tabName, data, container) {
     html += '<div class="empty-state">No items yet. Create your first project above.</div>';
   }
 
-  for (const proj of projects) {
+  const hasProjSortOrder = projects.some(p => p.data['Sort_Order'] && parseInt(p.data['Sort_Order'], 10) > 0);
+  const sortedProjects = hasProjSortOrder
+    ? [...projects].sort((a, b) => parseInt(a.data['Sort_Order'] || '0', 10) - parseInt(b.data['Sort_Order'] || '0', 10))
+    : projects;
+
+  html += `<div class="projects-list" data-tab="${escAttr(tabName)}">`;
+
+  for (const proj of sortedProjects) {
     const p = proj.data;
     const projTasks = tasks.filter(t => String(t.data['Parent_ID']) === String(p['ID']));
     const totalTasks = projTasks.length;
@@ -238,6 +245,7 @@ function renderHierarchicalTab(tabName, data, container) {
     html += `
       <div class="project-card" data-id="${esc(p['ID'])}" data-tab="${escAttr(tabName)}">
         <div class="project-header" data-project-id="${esc(p['ID'])}">
+          <span class="project-drag-handle"></span>
           <span class="project-name">${esc(p['Name'])}</span>
           <div class="project-progress-wrap">
             <div class="project-progress-bar">
@@ -254,6 +262,8 @@ function renderHierarchicalTab(tabName, data, container) {
         </div>
       </div>`;
   }
+
+  html += `</div>`;
 
   if (orphans.length > 0) {
     html += `
@@ -294,6 +304,15 @@ function renderTaskRow(d, tabName) {
 }
 
 function bindHierarchicalEvents(container, tabName) {
+  // Project drag handles — stop click from toggling collapse
+  container.querySelectorAll('.project-drag-handle').forEach(handle => {
+    handle.addEventListener('click', e => e.stopPropagation());
+  });
+
+  // Init project-level sortable
+  const projectsList = container.querySelector('.projects-list');
+  if (projectsList) initProjectSortable(projectsList, tabName);
+
   // Collapse / expand — click anywhere on header; init Sortable on first expand
   container.querySelectorAll('.project-header').forEach(hdr => {
     hdr.addEventListener('click', () => {
@@ -348,6 +367,31 @@ function saveSortOrder(tabName, taskList) {
   if (cached) {
     orders.forEach(({ id, sortOrder }) => {
       const row = cached.rows.find(r => r.data['ID'] === String(id));
+      if (row) row.data['Sort_Order'] = String(sortOrder);
+    });
+  }
+  gasPost({ action: 'updateSortOrder', tab: tabName, orders })
+    .catch(() => toast('Failed to save order'));
+}
+
+// ─── Sortable project reordering ──────────────────────────────────────────────
+function initProjectSortable(projectsList, tabName) {
+  return Sortable.create(projectsList, {
+    handle: '.project-drag-handle',
+    draggable: '.project-card',
+    animation: 120,
+    ghostClass: 'sortable-ghost',
+    onEnd: () => saveProjectSortOrder(tabName, projectsList),
+  });
+}
+
+function saveProjectSortOrder(tabName, projectsList) {
+  const cards = [...projectsList.querySelectorAll('.project-card')];
+  const orders = cards.map((card, i) => ({ id: card.dataset.id, sortOrder: i + 1 }));
+  const cached = tabDataCache[tabName];
+  if (cached) {
+    orders.forEach(({ id, sortOrder }) => {
+      const row = cached.rows.find(r => r.data['ID'] === String(id) && r.data['Type'] === 'PROJECT');
       if (row) row.data['Sort_Order'] = String(sortOrder);
     });
   }

@@ -632,8 +632,22 @@ header {
 
 .task-row:hover .drag-handle { opacity: 1; }
 
+.project-drag-handle {
+  width: 10px;
+  height: 10px;
+  background: #dadce0;
+  border-radius: 1px;
+  flex-shrink: 0;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.project-header:hover .project-drag-handle { opacity: 1; }
+
 @media (hover: none) {
   .drag-handle { opacity: 0.5; }
+  .project-drag-handle { opacity: 0.5; }
 }
 
 .sortable-ghost { opacity: 0.35; background: #e8f0fe; }
