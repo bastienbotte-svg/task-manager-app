@@ -659,7 +659,6 @@ function openTaskDetail(tab, id) {
   document.getElementById('detail-notes').value           = d['Notes'] || '';
 
   openModal('modal-task-detail');
-  setTimeout(() => document.getElementById('detail-notes').focus(), 50);
 }
 
 function saveTaskDetail() {
