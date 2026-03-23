@@ -45,8 +45,7 @@ body {
 
 /* ─── Header ────────────────────────────────────────────────────────────────── */
 header {
-  background: #fff;
-  border-bottom: 1px solid #e0e0e0;
+  background: #F8F8F3;
   height: 56px;
   padding: 0 24px;
   display: flex;
@@ -71,8 +70,9 @@ header {
 
 /* ─── Tab nav ───────────────────────────────────────────────────────────────── */
 #tab-nav {
-  background: #fff;
-  border-bottom: 1px solid #e0e0e0;
+  background: #F8F8F3;
+  border-radius: 0 0 20px 20px;
+  box-shadow: 0 6px 16px rgba(43, 38, 32, 0.08);
   padding: 0 24px;
   display: flex;
   overflow-x: auto;
@@ -163,7 +163,7 @@ header {
 .project-card {
   background: #fff;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border-radius: 16px;
   margin-bottom: 10px;
   overflow: visible;
 }
@@ -176,11 +176,11 @@ header {
   user-select: none;
   gap: 8px;
   min-height: 48px;
-  border-radius: 8px;
+  border-radius: 16px;
 }
 
 .project-header:hover { background: #F0EBE3; }
-.project-card:has(.task-list:not(.hidden)) .project-header { border-radius: 8px 8px 0 0; }
+.project-card:has(.task-list:not(.hidden)) .project-header { border-radius: 16px 16px 0 0; }
 
 .project-name {
   flex: 1;
@@ -336,7 +336,7 @@ header {
 .flat-row {
   background: #fff;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border-radius: 16px;
   padding: 12px 16px;
   margin-bottom: 8px;
   display: flex;
