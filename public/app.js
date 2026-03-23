@@ -659,6 +659,15 @@ function openTaskDetail(tab, id) {
   document.getElementById('detail-notes').value           = d['Notes'] || '';
 
   openModal('modal-task-detail');
+
+  // Prevent keyboard from appearing on mobile until user taps a field
+  document.querySelectorAll('#modal-task-detail input[type="text"], #modal-task-detail input[type="url"], #modal-task-detail textarea').forEach(el => {
+    el.setAttribute('readonly', 'readonly');
+    el.addEventListener('click', function unlock() {
+      el.removeAttribute('readonly');
+      el.removeEventListener('click', unlock);
+    });
+  });
 }
 
 function saveTaskDetail() {
