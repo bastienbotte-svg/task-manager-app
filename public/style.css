@@ -588,6 +588,12 @@ header {
 .tc-clear-btn:hover { color: #d93025; background: #fce8e6; }
 
 /* ─── Task detail modal ─────────────────────────────────────────────────────── */
+#modal-task-detail .modal-backdrop {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  background: rgba(32, 33, 36, 0.3);
+}
+
 .modal-detail {
   max-width: 620px;
   max-height: 90vh;

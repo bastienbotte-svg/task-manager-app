@@ -655,12 +655,6 @@ function openTaskDetail(tab, id) {
   document.getElementById('detail-execution-date').value  = sheetDateToIso(d['Execution_Date'] || '');
   tcInit('exec-time', d['Execution_Time'] || '');
   tcInit('duration',  d['Estimated_Duration'] || '');
-  document.getElementById('detail-recurrence').value      = d['Recurrence'] || '';
-  document.getElementById('detail-difficulty').value      = d['Difficulty'] || '';
-  document.getElementById('detail-stage').value           = d['Stage'] || '';
-  document.getElementById('detail-tags').value            = d['Tags'] || '';
-  document.getElementById('detail-assigned-to').value     = d['Assigned_To'] || '';
-  document.getElementById('detail-energy-level').value    = d['Energy_Level'] || '';
   document.getElementById('detail-external-link').value   = d['External_Link'] || '';
   document.getElementById('detail-notes').value           = d['Notes'] || '';
 
@@ -679,12 +673,6 @@ function saveTaskDetail() {
     Execution_Date:     formatDateForSheet(document.getElementById('detail-execution-date').value),
     Execution_Time:     document.getElementById('detail-execution-time').value,
     Estimated_Duration: document.getElementById('detail-duration').value.trim(),
-    Recurrence:         document.getElementById('detail-recurrence').value.trim(),
-    Difficulty:         document.getElementById('detail-difficulty').value.trim(),
-    Stage:              document.getElementById('detail-stage').value.trim(),
-    Tags:               document.getElementById('detail-tags').value.trim(),
-    Assigned_To:        document.getElementById('detail-assigned-to').value.trim(),
-    Energy_Level:       document.getElementById('detail-energy-level').value.trim(),
     External_Link:      document.getElementById('detail-external-link').value.trim(),
     Notes:              document.getElementById('detail-notes').value,
   };
