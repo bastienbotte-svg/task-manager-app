@@ -1259,7 +1259,8 @@ function renderHealthTab(data) {
             <div class="health-icon-circle health-icon-today">${getCategoryIcon(act.category)}</div>
             <div class="health-card-body">
               <div class="health-card-name">${esc(act.name)}</div>
-              <div class="health-card-meta">${esc(act.category)} · ${esc(daysLabel)}</div>
+              <div class="health-card-meta">${esc(act.category)}</div>
+              <div class="health-card-meta">${esc(daysLabel)}</div>
             </div>
             <div class="health-streak-block">
               <div class="health-streak-lbl">STREAK</div>
@@ -1278,13 +1279,13 @@ function renderHealthTab(data) {
     ? '<div class="health-card-empty">—</div>'
     : upcoming.map(({ activity: act, date, dayName }) => {
         const streak   = data.streaks[act.id] || 0;
-        const dayLabel = `${dayName.toUpperCase()} ${date.getDate()}`;
         return `
           <div class="health-card health-card-upcoming">
             <div class="health-icon-circle health-icon-upcoming">${getCategoryIcon(act.category)}</div>
             <div class="health-card-body">
               <div class="health-card-name health-name-accent">${esc(act.name)}</div>
-              <div class="health-card-day-label">${esc(act.category)} · ${esc(dayLabel)}</div>
+              <div class="health-card-meta">${esc(act.category)}</div>
+              <div class="health-card-day-label">${dayName.toUpperCase()}</div>
             </div>
             <div class="health-streak-block">
               <div class="health-streak-lbl health-streak-lbl-dark">STREAK</div>
@@ -1305,7 +1306,6 @@ function renderHealthTab(data) {
     if (match) {
       const refId     = match[1];
       const threshold = match[2];
-      const current   = data.streaks[refId] || 0;
       lockedHtml += `
         <div class="health-card health-card-locked">
           <div class="health-icon-circle health-icon-locked">${getCategoryIcon(act.category)}</div>
@@ -1314,9 +1314,9 @@ function renderHealthTab(data) {
             <div class="health-card-meta">${esc(act.category)}</div>
           </div>
           <div class="health-locked-info">
-            <div class="health-locked-line1">UNLOCK AT ${esc(threshold)}</div>
+            <div class="health-locked-line1">UNLOCK AT</div>
+            <div class="health-locked-num">${esc(threshold)}</div>
             <div class="health-locked-line2">${esc(refId)} streak</div>
-            <div class="health-locked-progress">${esc(String(current))} / ${esc(threshold)}</div>
           </div>
           <span class="health-lock-icon">🔒</span>
         </div>`;
@@ -1382,9 +1382,9 @@ function renderHealthTab(data) {
       <div class="health-section-label">COMING UP</div>
       ${upcomingHtml}
 
-      ${lockedActivities.length > 0 ? `<div class="health-section-label">LOCKED</div>${lockedHtml}` : ''}
+      ${lockedHtml}
 
-      <div class="health-section-label">CONSISTENCY GRID</div>
+      <div class="health-section-label health-section-label-accent">CONSISTENCY GRID</div>
       <table class="health-grid">
         <thead><tr>${gridHead}</tr></thead>
         <tbody>${gridRows}</tbody>

@@ -3,7 +3,7 @@
 
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #F4ECE2;
+  background: #ffffff;
   color: #2B2620;
   font-size: 14px;
   line-height: 1.5;
@@ -45,7 +45,7 @@ body {
 
 /* ─── Header ────────────────────────────────────────────────────────────────── */
 header {
-  background: #F4ECE2;
+  background: #ffffff;
   height: 56px;
   padding: 0 24px;
   display: flex;
@@ -70,7 +70,7 @@ header {
 
 /* ─── Tab nav ───────────────────────────────────────────────────────────────── */
 #tab-nav {
-  background: #F4ECE2;
+  background: #ffffff;
   border-radius: 0 0 20px 20px;
   box-shadow: 0 6px 16px rgba(43, 38, 32, 0.08);
   padding: 0 24px;
@@ -144,7 +144,7 @@ header {
 .btn-outline:hover { background: #F0EBE3; }
 
 .btn-ghost     { background: none; color: #6B5F58; }
-.btn-ghost:hover { background: #F4ECE2; }
+.btn-ghost:hover { background: #F0F0F0; }
 
 .btn-danger    { background: none; color: #d93025; }
 .btn-danger:hover { background: #fce8e6; }
@@ -545,7 +545,7 @@ header {
   display: block;
 }
 
-.tc-btn:hover { background: #F4ECE2; color: #687259; }
+.tc-btn:hover { background: #F0F0F0; color: #687259; }
 
 .tc-val {
   font-size: 20px;
@@ -679,8 +679,8 @@ body { padding-bottom: 68px; }
   bottom: 0;
   left: 0;
   right: 0;
-  background: #F4ECE2;
-  border-top: 1px solid #E6D8CB;
+  background: #ffffff;
+  border-top: 1px solid #E5E5E5;
   display: flex;
   z-index: 150;
   height: 62px;
@@ -714,11 +714,11 @@ body { padding-bottom: 68px; }
 }
 
 .health-title {
-  font-size: 15px;
-  letter-spacing: 2px;
+  font-size: 26px;
+  letter-spacing: 4px;
   font-weight: bold;
   color: #2B2620;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 /* Progress header row */
@@ -778,6 +778,10 @@ body { padding-bottom: 68px; }
   margin-bottom: 10px;
 }
 
+.health-section-label-accent {
+  color: #DB7F50;
+}
+
 /* Activity cards */
 .health-card {
   border-radius: 8px;
@@ -789,8 +793,8 @@ body { padding-bottom: 68px; }
 }
 
 .health-card-today    { background: #2B2620; border: none; }
-.health-card-upcoming { background: #fff; border: 1px solid #EDE5DC; }
-.health-card-locked   { background: #fff; border: 1.5px dashed #D5CBC0; }
+.health-card-upcoming { background: #fff; border: 1px solid #E5E5E5; }
+.health-card-locked   { background: #fff; border: 1.5px dashed #DDDDDD; }
 
 /* Category icon circle */
 .health-icon-circle {
@@ -804,8 +808,8 @@ body { padding-bottom: 68px; }
 }
 
 .health-icon-today  { background: rgba(255,255,255,0.15); color: #fff; }
-.health-icon-upcoming { background: #F4ECE2; color: #6B5F58; }
-.health-icon-locked { background: #F0EBE3; color: #C4BDB6; }
+.health-icon-upcoming { background: #F0F0F0; color: #888; }
+.health-icon-locked { background: #F0F0F0; color: #C4BDB6; }
 
 .health-card-body { flex: 1; min-width: 0; }
 
@@ -903,6 +907,12 @@ body { padding-bottom: 68px; }
   color: #C4BDB6;
 }
 
+.health-locked-num {
+  font-size: 24px;
+  color: #A89990;
+  line-height: 1;
+}
+
 .health-locked-progress {
   font-size: 9px;
   color: #DB7F50;
@@ -963,7 +973,7 @@ body { padding-bottom: 68px; }
   font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
   letter-spacing: 0.3px;
-  color: #8C7E77;
+  color: #DB7F50;
   padding-right: 10px;
   white-space: nowrap;
 }
