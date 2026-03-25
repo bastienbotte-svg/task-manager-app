@@ -1164,6 +1164,24 @@ function getMondayOfWeek() {
   return d;
 }
 
+function getSundayOfWeek() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay()); // d.getDay() === 0 → stays, else subtract
+  return d;
+}
+
+function getCategoryIcon(category) {
+  const c = (category || '').toUpperCase();
+  if (c === 'MOBILITY')
+    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
+  if (c === 'STRENGTH')
+    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29l-1.43-1.43z"/></svg>`;
+  if (c === 'CARDIO')
+    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>`;
+  return `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="7"/></svg>`;
+}
+
 function setupBottomNav() {
   document.querySelectorAll('.bottom-tab-btn').forEach(btn =>
     btn.addEventListener('click', () => switchAppTab(btn.dataset.appTab))
@@ -1212,94 +1230,108 @@ function renderHealthTab(data) {
   const today  = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = dateToISO(today);
+  const FULL_DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const todayFullDay = FULL_DAYS[today.getDay()].toUpperCase();
 
-  // ── Progress bar ────────────────────────────────────────────────────────────
-  const totalSessions = data.activities
+  // ── Progress bar ─────────────────────────────────────────────────────────────
+  const totalSessions     = data.activities
     .filter(a => a.status === 'active' && a.days)
     .reduce((sum, a) => sum + a.days.split(',').length, 0);
   const completedSessions = data.weekLog.filter(e => e.completed).length;
-  const remaining = Math.max(0, totalSessions - completedSessions);
+  const remaining         = Math.max(0, totalSessions - completedSessions);
+  const pct               = totalSessions > 0 ? Math.round(completedSessions / totalSessions * 100) : 0;
 
   let progressBar = '';
-  for (let i = 0; i < totalSessions; i++) {
+  for (let i = 0; i < Math.max(totalSessions, 1); i++) {
     progressBar += `<div class="health-progress-seg${i < completedSessions ? ' filled' : ''}"></div>`;
   }
-  if (totalSessions === 0) progressBar = '<div class="health-progress-seg"></div>';
 
-  // ── TODAY cards ──────────────────────────────────────────────────────────────
+  // ── TODAY cards ───────────────────────────────────────────────────────────────
   const todayActivities = data.activities.filter(a => data.todayScheduled.includes(a.id));
   let todayHtml = todayActivities.length === 0
     ? '<div class="health-card-empty">NO SESSIONS SCHEDULED TODAY</div>'
     : todayActivities.map(act => {
-        const done       = data.todayCompleted.includes(act.id);
-        const streak     = data.streaks[act.id] || 0;
-        const daysLabel  = act.days ? act.days.split(',').map(d => d.trim().toUpperCase()).join(' ') : '—';
+        const done      = data.todayCompleted.includes(act.id);
+        const streak    = data.streaks[act.id] || 0;
+        const daysLabel = act.days ? act.days.split(',').map(d => d.trim()).join(' · ') : '—';
         return `
           <div class="health-card health-card-today" id="hcard-${act.id}">
+            <div class="health-icon-circle health-icon-today">${getCategoryIcon(act.category)}</div>
+            <div class="health-card-body">
+              <div class="health-card-name">${esc(act.name)}</div>
+              <div class="health-card-meta">${esc(act.category)} · ${esc(daysLabel)}</div>
+            </div>
+            <div class="health-streak-block">
+              <div class="health-streak-lbl">STREAK</div>
+              <div class="health-streak-num">${String(streak).padStart(2,'0')}</div>
+            </div>
             <button class="health-check-btn${done ? ' checked' : ''}"
                     data-activity-id="${escAttr(act.id)}"
                     data-date="${todayStr}"
-                    data-completed="${done}">
-              ${done ? '✓' : ''}
-            </button>
-            <div class="health-card-body">
-              <div class="health-card-name">${esc(act.name.toUpperCase())}</div>
-              <div class="health-card-meta">${esc(act.category)} · ${esc(daysLabel)}</div>
-            </div>
-            <div class="health-card-streak">STREAK · ${streak}</div>
+                    data-completed="${done}">${done ? '✓' : ''}</button>
           </div>`;
       }).join('');
 
-  // ── COMING UP: next 2 sessions after today ───────────────────────────────────
+  // ── COMING UP ─────────────────────────────────────────────────────────────────
   const upcoming = getUpcomingSessions(data, today);
   const upcomingHtml = upcoming.length === 0
     ? '<div class="health-card-empty">—</div>'
     : upcoming.map(({ activity: act, date, dayName }) => {
-        const daysLabel = act.days ? act.days.split(',').map(d => d.trim().toUpperCase()).join(' ') : '—';
-        const streak    = data.streaks[act.id] || 0;
-        const dayLabel  = `${dayName.toUpperCase()} ${date.getDate()}`;
+        const streak   = data.streaks[act.id] || 0;
+        const dayLabel = `${dayName.toUpperCase()} ${date.getDate()}`;
         return `
           <div class="health-card health-card-upcoming">
+            <div class="health-icon-circle health-icon-upcoming">${getCategoryIcon(act.category)}</div>
             <div class="health-card-body">
-              <div class="health-card-day-label">${dayLabel}</div>
-              <div class="health-card-name">${esc(act.name.toUpperCase())}</div>
-              <div class="health-card-meta">${esc(act.category)} · ${esc(daysLabel)}</div>
+              <div class="health-card-name health-name-accent">${esc(act.name)}</div>
+              <div class="health-card-day-label">${esc(act.category)} · ${esc(dayLabel)}</div>
             </div>
-            <div class="health-card-streak">${streak > 0 ? `STREAK · ${streak}` : ''}</div>
+            <div class="health-streak-block">
+              <div class="health-streak-lbl health-streak-lbl-dark">STREAK</div>
+              <div class="health-streak-num health-streak-num-dark">${String(streak).padStart(2,'0')}</div>
+            </div>
+            <button class="health-check-btn health-check-btn-outline"
+                    data-activity-id="${escAttr(act.id)}"
+                    data-date="${dateToISO(date)}"
+                    data-completed="false"></button>
           </div>`;
       }).join('');
 
-  // ── LOCKED activities ────────────────────────────────────────────────────────
+  // ── LOCKED ────────────────────────────────────────────────────────────────────
   const lockedActivities = data.activities.filter(a => a.status === 'locked');
   let lockedHtml = '';
   lockedActivities.forEach(act => {
     const match = act.unlock_condition ? act.unlock_condition.match(/^(\w+)_streak>=(\d+)$/) : null;
     if (match) {
-      const refId      = match[1];
-      const threshold  = match[2];
-      const refAct     = data.activities.find(a => a.id === refId);
-      const refName    = refAct ? refAct.name.toUpperCase() : refId.toUpperCase();
-      const current    = data.streaks[refId] || 0;
+      const refId     = match[1];
+      const threshold = match[2];
+      const current   = data.streaks[refId] || 0;
       lockedHtml += `
         <div class="health-card health-card-locked">
+          <div class="health-icon-circle health-icon-locked">${getCategoryIcon(act.category)}</div>
           <div class="health-card-body">
-            <div class="health-card-name">${esc(act.name.toUpperCase())}</div>
+            <div class="health-card-name">${esc(act.name)}</div>
             <div class="health-card-meta">${esc(act.category)}</div>
           </div>
-          <div class="health-card-streak">UNLOCK AT ${esc(threshold)}<br>${esc(refName)} STREAK<br>${esc(String(current))} / ${esc(threshold)}</div>
+          <div class="health-locked-info">
+            <div class="health-locked-line1">UNLOCK AT ${esc(threshold)}</div>
+            <div class="health-locked-line2">${esc(refId)} streak</div>
+            <div class="health-locked-progress">${esc(String(current))} / ${esc(threshold)}</div>
+          </div>
+          <span class="health-lock-icon">🔒</span>
         </div>`;
     }
   });
 
-  // ── Consistency grid ─────────────────────────────────────────────────────────
-  const monday    = getMondayOfWeek();
+  // ── Consistency grid (Sun → Sat) ──────────────────────────────────────────────
+  const sunday    = getSundayOfWeek();
   const weekDates = [];
   for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate() + i);
     weekDates.push(d);
   }
-  const WEEK_LABELS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+  const GRID_LABELS = ['S','M','T','W','T','F','S'];
 
   const logLookup = {};
   data.weekLog.forEach(e => { logLookup[`${e.date}|${e.activity_id}`] = e.completed; });
@@ -1307,7 +1339,7 @@ function renderHealthTab(data) {
   const gridHead = '<th class="activity-label"></th>' +
     weekDates.map((d, i) => {
       const isToday = dateToISO(d) === todayStr;
-      return `<th${isToday ? ' class="today-col"' : ''}>${WEEK_LABELS[i]}</th>`;
+      return `<th${isToday ? ' class="today-col"' : ''}>${GRID_LABELS[i]}</th>`;
     }).join('');
 
   const gridRows = data.activities.map(act => {
@@ -1317,32 +1349,34 @@ function renderHealthTab(data) {
       const dayName     = DAY_SUN_FIRST[d.getDay()];
       const isScheduled = scheduledDays.includes(dayName);
       const isDone      = logLookup[`${ds}|${act.id}`] === true;
-      const isFuture    = ds >= todayStr; // includes today (not yet a miss)
-
+      const isFuture    = ds >= todayStr;
       let cls = 'grid-cell ';
-      if (act.status === 'locked') {
-        cls += 'locked';
-      } else if (isScheduled) {
-        cls += isDone ? 'done' : isFuture ? 'scheduled-future' : 'scheduled-missed';
-      } else {
-        cls += 'rest';
-      }
+      if (act.status === 'locked')  cls += 'locked';
+      else if (isScheduled)         cls += isDone ? 'done' : isFuture ? 'scheduled-future' : 'scheduled-missed';
+      else                          cls += 'rest';
       return `<td><span class="${cls}"></span></td>`;
     }).join('');
     return `<tr>
-      <td class="activity-label">${esc(act.name.slice(0, 9).toUpperCase())}</td>
+      <td class="activity-label">${esc(act.name.slice(0,9).toLowerCase())}</td>
       ${cells}
     </tr>`;
   }).join('');
 
-  // ── Assemble ─────────────────────────────────────────────────────────────────
+  // ── Assemble ──────────────────────────────────────────────────────────────────
   main.innerHTML = `
     <div class="health-screen">
       <div class="health-title">HEALTH TRACKER</div>
+      <div class="health-progress-header">
+        <span class="health-progress-title">WEEKLY PROGRESS</span>
+        <span class="health-progress-pct">${pct}%</span>
+      </div>
       <div class="health-progress-bar">${progressBar}</div>
-      <div class="health-progress-label">${completedSessions} COMPLETED / ${remaining} REMAINING</div>
+      <div class="health-progress-counts">
+        <span>${String(completedSessions).padStart(2,'0')} COMPLETED</span>
+        <span>${String(remaining).padStart(2,'0')} REMAINING</span>
+      </div>
 
-      <div class="health-section-label">TODAY</div>
+      <div class="health-section-label">TODAY — ${todayFullDay}</div>
       ${todayHtml}
 
       <div class="health-section-label">COMING UP</div>
@@ -1350,14 +1384,13 @@ function renderHealthTab(data) {
 
       ${lockedActivities.length > 0 ? `<div class="health-section-label">LOCKED</div>${lockedHtml}` : ''}
 
-      <div class="health-section-label">CONSISTENCY</div>
+      <div class="health-section-label">CONSISTENCY GRID</div>
       <table class="health-grid">
         <thead><tr>${gridHead}</tr></thead>
         <tbody>${gridRows}</tbody>
       </table>
     </div>`;
 
-  // Attach checkmark listeners
   main.querySelectorAll('.health-check-btn').forEach(btn =>
     btn.addEventListener('click', () => handleHealthCheck(btn))
   );
