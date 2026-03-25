@@ -3,7 +3,7 @@
 
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #F8F8F3;
+  background: #F4ECE2;
   color: #2B2620;
   font-size: 14px;
   line-height: 1.5;
@@ -45,7 +45,7 @@ body {
 
 /* ─── Header ────────────────────────────────────────────────────────────────── */
 header {
-  background: #F8F8F3;
+  background: #F4ECE2;
   height: 56px;
   padding: 0 24px;
   display: flex;
@@ -70,7 +70,7 @@ header {
 
 /* ─── Tab nav ───────────────────────────────────────────────────────────────── */
 #tab-nav {
-  background: #F8F8F3;
+  background: #F4ECE2;
   border-radius: 0 0 20px 20px;
   box-shadow: 0 6px 16px rgba(43, 38, 32, 0.08);
   padding: 0 24px;
@@ -144,7 +144,7 @@ header {
 .btn-outline:hover { background: #F0EBE3; }
 
 .btn-ghost     { background: none; color: #6B5F58; }
-.btn-ghost:hover { background: #F8F8F3; }
+.btn-ghost:hover { background: #F4ECE2; }
 
 .btn-danger    { background: none; color: #d93025; }
 .btn-danger:hover { background: #fce8e6; }
@@ -545,7 +545,7 @@ header {
   display: block;
 }
 
-.tc-btn:hover { background: #F8F8F3; color: #687259; }
+.tc-btn:hover { background: #F4ECE2; color: #687259; }
 
 .tc-val {
   font-size: 20px;
@@ -672,18 +672,19 @@ header {
 }
 
 /* ─── Bottom app nav ─────────────────────────────────────────────────────────── */
-body { padding-bottom: 56px; }
+body { padding-bottom: 68px; }
 
 #bottom-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: #fff;
-  border-top: 1px solid #e8e8e8;
+  background: #F4ECE2;
+  border-top: 1px solid #E6D8CB;
   display: flex;
   z-index: 150;
-  height: 52px;
+  height: 62px;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .bottom-tab-btn {
@@ -691,16 +692,21 @@ body { padding-bottom: 56px; }
   background: none;
   border: none;
   font-family: 'Share Tech Mono', monospace;
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.8px;
   color: #C4BDB6;
   cursor: pointer;
   padding: 0;
   transition: color 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
-.bottom-tab-btn.active { color: #000; }
-.bottom-tab-btn:hover:not(.active) { color: #8C7E77; }
+.bottom-tab-btn.active { color: #DB7F50; }
+.bottom-tab-btn:hover:not(.active) { color: #A89990; }
 
 /* ─── Health tab ─────────────────────────────────────────────────────────────── */
 .health-screen {
@@ -782,9 +788,9 @@ body { padding-bottom: 56px; }
   gap: 12px;
 }
 
-.health-card-today    { background: #2B2620; border: 1px solid #2B2620; }
-.health-card-upcoming { background: #fff; border: 1px solid #E6CEBC; }
-.health-card-locked   { background: #fff; border: 1px dashed #d0cac5; }
+.health-card-today    { background: #2B2620; border: none; }
+.health-card-upcoming { background: #fff; border: 1px solid #EDE5DC; }
+.health-card-locked   { background: #fff; border: 1.5px dashed #D5CBC0; }
 
 /* Category icon circle */
 .health-icon-circle {
@@ -937,6 +943,17 @@ body { padding-bottom: 56px; }
 .health-grid th.today-col {
   color: #2B2620;
   font-weight: bold;
+  position: relative;
+}
+
+.health-grid th.today-col::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #DB7F50;
+  margin: 3px auto 0;
 }
 
 .health-grid td { text-align: center; padding: 3px 2px; }
