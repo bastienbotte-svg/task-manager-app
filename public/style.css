@@ -670,3 +670,221 @@ header {
   .app-title { font-size: 16px; }
   .modal-box { padding: 18px; }
 }
+
+/* ─── Bottom app nav ─────────────────────────────────────────────────────────── */
+body { padding-bottom: 56px; }
+
+#bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 1px solid #e8e8e8;
+  display: flex;
+  z-index: 150;
+  height: 52px;
+}
+
+.bottom-tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  color: #C4BDB6;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.bottom-tab-btn.active { color: #000; }
+.bottom-tab-btn:hover:not(.active) { color: #8C7E77; }
+
+/* ─── Health tab ─────────────────────────────────────────────────────────────── */
+.health-screen {
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.health-title {
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  color: #000;
+  margin-bottom: 14px;
+}
+
+/* Segmented progress bar */
+.health-progress-bar {
+  display: flex;
+  gap: 1px;
+  width: 100%;
+  height: 6px;
+  margin-bottom: 8px;
+}
+
+.health-progress-seg {
+  flex: 1;
+  height: 6px;
+  border-radius: 1px;
+  background: #e8e8e8;
+}
+
+.health-progress-seg.filled { background: #000; }
+
+.health-progress-label {
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: #8C7E77;
+  margin-bottom: 4px;
+}
+
+/* Section labels */
+.health-section-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #A89990;
+  margin-top: 24px;
+  margin-bottom: 10px;
+}
+
+/* Activity cards */
+.health-card {
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.health-card-today    { background: #000; border: 1px solid #000; }
+.health-card-upcoming { background: #fff; border: 1px solid #000; }
+.health-card-locked   { background: #fff; border: 1px dashed #d0cac5; }
+
+.health-card-body { flex: 1; min-width: 0; }
+
+.health-card-name {
+  font-size: 12px;
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+}
+
+.health-card-today    .health-card-name { color: #fff; }
+.health-card-upcoming .health-card-name { color: #1a1a1a; }
+.health-card-locked   .health-card-name { color: #C4BDB6; }
+
+.health-card-meta { font-size: 10px; letter-spacing: 0.3px; }
+
+.health-card-today    .health-card-meta { color: #777; }
+.health-card-upcoming .health-card-meta { color: #A89990; }
+.health-card-locked   .health-card-meta { color: #D5D0CB; }
+
+.health-card-day-label {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #A89990;
+  margin-bottom: 3px;
+}
+
+.health-card-streak {
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  text-align: right;
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+
+.health-card-today    .health-card-streak { color: #555; }
+.health-card-upcoming .health-card-streak { color: #8C7E77; }
+.health-card-locked   .health-card-streak { color: #C4BDB6; font-size: 9px; }
+
+/* Checkmark button */
+.health-check-btn {
+  background: none;
+  border: 1.5px solid rgba(255,255,255,0.5);
+  border-radius: 2px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  color: transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.health-check-btn.checked {
+  background: #fff;
+  border-color: #fff;
+  color: #000;
+}
+
+.health-check-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* No-sessions message */
+.health-card-empty {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: #C4BDB6;
+  padding: 8px 0;
+}
+
+/* Consistency grid */
+.health-grid {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.health-grid th {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  color: #A89990;
+  text-align: center;
+  padding: 0 0 8px 0;
+  font-weight: normal;
+}
+
+.health-grid th.today-col { color: #000; }
+
+.health-grid td { text-align: center; padding: 3px 2px; }
+
+.health-grid .activity-label {
+  text-align: left;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.3px;
+  color: #8C7E77;
+  padding-right: 10px;
+  white-space: nowrap;
+}
+
+.grid-cell {
+  display: inline-block;
+  width: 26px;
+  height: 20px;
+  border-radius: 2px;
+}
+
+.grid-cell.done             { background: #000; border: 1.5px solid #000; }
+.grid-cell.scheduled-future { background: #f0f0ee; border: 1.5px solid #f0f0ee; }
+.grid-cell.scheduled-missed { background: #fff; border: 1.5px solid #e0e0e0; }
+.grid-cell.rest             { background: transparent; border: 1.5px dashed #ececec; }
+.grid-cell.locked           { background: transparent; border: 1.5px dashed #efefef; opacity: 0.4; }
+
+/* Placeholder tabs */
+.placeholder-tab {
+  text-align: center;
+  padding: 80px 0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: #C4BDB6;
+  line-height: 2;
+}

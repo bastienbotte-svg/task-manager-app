@@ -6,6 +6,8 @@
   <title>Task Manager</title>
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <meta name="theme-color" content="#1a73e8">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
 </head>
@@ -215,6 +217,14 @@
       </div>
     </div>
   </div>
+
+  <!-- Bottom app nav -->
+  <nav id="bottom-nav">
+    <button class="bottom-tab-btn active" data-app-tab="tasks">TASKS</button>
+    <button class="bottom-tab-btn" data-app-tab="health">HEALTH</button>
+    <button class="bottom-tab-btn" data-app-tab="finance">FINANCE</button>
+    <button class="bottom-tab-btn" data-app-tab="grocery">GROCERY</button>
+  </nav>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
   <script src="app.js"></script>

@@ -18,6 +18,7 @@ function doGet(e) {
       case 'tabs':            result = getTabs(); break;
       case 'data':            result = getData(e.parameter.tab); break;
       case 'dataWithArchived': result = getDataWithArchived(e.parameter.tab); break;
+      case 'getHealthData':   result = getHealthData(); break;
       default:                result = { error: 'Unknown action: ' + action };
     }
     return jsonResponse(result);
@@ -37,6 +38,7 @@ function doPost(e) {
       case 'deleteRow':      result = deleteRowAction(body.tab, body.id); break;
       case 'inbox':          result = addInbox(body.name, body.notes); break;
       case 'updateSortOrder': result = updateSortOrder(body.tab, body.orders); break;
+      case 'logActivity':    result = logActivity(body); break;
       default:               result = { error: 'Unknown action: ' + body.action };
     }
     return jsonResponse(result);
@@ -203,8 +205,8 @@ function updateRowAction(tabName, id, updates) {
   Object.keys(updates).forEach(function(k) { updated[k] = updates[k]; });
   updated['Last_Modified'] = today();
 
-  // Archive when Done
-  if (updates.Status === 'Done' && existing.Status !== 'Done') {
+  // Archive when Done (not for Michel_Review — those are never archived this way)
+  if (updates.Status === 'Done' && existing.Status !== 'Done' && tabName !== 'Michel_Review') {
     updated['Completed_Date'] = today();
     var archResult = getData('Archive');
     appendRowData('Archive', archResult.headers, updated);
@@ -343,6 +345,298 @@ function updateSortOrder(tabName, orders) {
 
   sheet.getRange(2, sortColNum, numDataRows, 1).setValues(sortVals);
   return { success: true };
+}
+
+// ─── Setup Social tab ─────────────────────────────────────────────────────────
+// Run once from the GAS editor to create the Social tab with headers and sample rows.
+function setupSocialTab() {
+  var ss = getSpreadsheet();
+  if (ss.getSheetByName('Social')) {
+    Logger.log('Social tab already exists — aborting.');
+    return;
+  }
+
+  var sheet = ss.insertSheet('Social');
+  var headers = [
+    'ID', 'Type', 'Name', 'Status', 'Priority', 'Notes',
+    'Created_Date', 'Last_Modified', 'Execution_Date', 'Execution_Time',
+    'Estimated_Duration', 'Recurrence', 'Difficulty', 'Stage', 'Tags',
+    'Assigned_To', 'Energy_Level', 'External_Link', 'Due_Date',
+    'Parent_ID', 'Category', 'Completed_Date', 'Calendar_Event_ID', 'Sort_Order'
+  ];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+  var t = today();
+  var samples = [
+    ['1', 'TASK', 'Coffee with Alex',        'To Do',       'Medium', '',                          t, t, '', '', '', '', '', '', '', '', '', '', '', '', 'Social', '', '', ''],
+    ['2', 'TASK', "Reply to Sarah's invite",  'To Do',       'High',   '',                          t, t, '', '', '', '', '', '', '', '', '', '', '', '', 'Social', '', '', ''],
+    ['3', 'TASK', 'Plan team lunch',          'In Progress', 'Medium', 'Check availability first',  t, t, '', '', '', '', '', '', '', '', '', '', '', '', 'Social', '', '', ''],
+  ];
+  sheet.getRange(2, 1, samples.length, headers.length).setValues(samples);
+  Logger.log('Social tab created with ' + samples.length + ' sample rows.');
+}
+
+// ─── Setup Health tabs ────────────────────────────────────────────────────────
+// Run once from the GAS editor to create Health_Activities and Health_Log tabs.
+function setupHealthTabs() {
+  var ss = getSpreadsheet();
+
+  // ── Health_Activities ──────────────────────────────────────────────────────
+  var activitiesSheet = ss.getSheetByName('Health_Activities');
+  if (!activitiesSheet) {
+    activitiesSheet = ss.insertSheet('Health_Activities');
+    Logger.log('Health_Activities tab created.');
+  } else {
+    Logger.log('Health_Activities already exists — skipping creation.');
+  }
+
+  var actHeaders = ['id', 'name', 'category', 'days', 'status', 'unlock_condition'];
+  var actHeaderRange = activitiesSheet.getRange(1, 1, 1, actHeaders.length);
+  actHeaderRange.setValues([actHeaders]);
+  actHeaderRange.setFontWeight('bold');
+
+  var actRows = [
+    ['stretch',    'Stretching', 'MOBILITY', 'Mon,Wed,Sat', 'active', ''],
+    ['kettlebell', 'Kettlebell', 'STRENGTH', 'Tue,Thu',     'active', ''],
+    ['running',    'Running',    'CARDIO',   '',            'locked', 'kettlebell_streak>=15'],
+  ];
+  activitiesSheet.getRange(2, 1, actRows.length, actHeaders.length).setValues(actRows);
+  activitiesSheet.setFrozenRows(1);
+
+  // ── Health_Log ─────────────────────────────────────────────────────────────
+  var logSheet = ss.getSheetByName('Health_Log');
+  if (!logSheet) {
+    logSheet = ss.insertSheet('Health_Log');
+    Logger.log('Health_Log tab created.');
+  } else {
+    Logger.log('Health_Log already exists — skipping creation.');
+  }
+
+  var logHeaders = ['date', 'activity_id', 'completed'];
+  var logHeaderRange = logSheet.getRange(1, 1, 1, logHeaders.length);
+  logHeaderRange.setValues([logHeaders]);
+  logHeaderRange.setFontWeight('bold');
+  logSheet.setFrozenRows(1);
+
+  Logger.log('setupHealthTabs() complete.');
+}
+
+// ─── logActivity endpoint ─────────────────────────────────────────────────────
+// Called via doPost with action=logActivity.
+// Upserts a row in Health_Log for a given date and activityId.
+function logActivity(body) {
+  var activityId = body.activityId;
+  var date       = body.date;       // YYYY-MM-DD
+  var completed  = body.completed;  // boolean
+
+  if (!activityId || !date) {
+    return { success: false, error: 'Missing activityId or date' };
+  }
+
+  var logData      = getData('Health_Log');
+  var headers      = logData.headers; // ['date', 'activity_id', 'completed']
+  var completedCol = headers.indexOf('completed') + 1; // 1-based column number
+
+  // Search for an existing row matching both date and activity_id
+  var existingRow = null;
+  logData.rows.forEach(function(r) {
+    if (r.data['date'] === date && r.data['activity_id'] === activityId) {
+      existingRow = r;
+    }
+  });
+
+  var sheet = getSpreadsheet().getSheetByName('Health_Log');
+
+  if (existingRow) {
+    sheet.getRange(existingRow.rowIndex, completedCol).setValue(completed);
+  } else {
+    var newRow = headers.map(function(h) {
+      if (h === 'date')        return date;
+      if (h === 'activity_id') return activityId;
+      if (h === 'completed')   return completed;
+      return '';
+    });
+    sheet.appendRow(newRow);
+  }
+
+  return { success: true };
+}
+
+// ─── Health data endpoint ─────────────────────────────────────────────────────
+// Called via doGet with action=getHealthData. Returns the full health state
+// the frontend needs in a single read.
+function getHealthData() {
+  var DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  // Read all activities (keep rowIndex for unlock writes)
+  var actData   = getData('Health_Activities');
+  var actSheet  = getSpreadsheet().getSheetByName('Health_Activities');
+  var statusCol = actData.headers.indexOf('status') + 1; // 1-based col number
+
+  var activities = actData.rows.map(function(r) {
+    return {
+      id:               r.data['id'],
+      name:             r.data['name'],
+      category:         r.data['category'],
+      days:             r.data['days'],
+      status:           r.data['status'],
+      unlock_condition: r.data['unlock_condition'],
+      _rowIndex:        r.rowIndex
+    };
+  });
+
+  // Compute streaks for all activities
+  var streaks = getAllStreaks();
+
+  // Auto-unlock: check locked activities whose condition is now met
+  activities.forEach(function(act) {
+    if (act.status !== 'locked' || !act.unlock_condition) return;
+    // Condition format: "kettlebell_streak>=15"
+    var match = act.unlock_condition.match(/^(\w+)_streak>=(\d+)$/);
+    if (!match) return;
+    var refId     = match[1];
+    var threshold = parseInt(match[2], 10);
+    if ((streaks[refId] || 0) >= threshold) {
+      if (statusCol > 0) actSheet.getRange(act._rowIndex, statusCol).setValue('active');
+      act.status = 'active';
+    }
+  });
+
+  // Strip internal rowIndex before returning
+  activities.forEach(function(act) { delete act._rowIndex; });
+
+  // Today info
+  var now = new Date();
+  now.setHours(0, 0, 0, 0);
+  var todayDayName = DAY_NAMES[now.getDay()];
+  var todayStr     = formatDateISO(now);
+
+  // todayScheduled: activities whose days list includes today
+  var todayScheduled = [];
+  activities.forEach(function(act) {
+    if (!act.days) return;
+    var days = act.days.split(',').map(function(d) { return d.trim(); });
+    if (days.indexOf(todayDayName) !== -1) todayScheduled.push(act.id);
+  });
+
+  // weekLog: Health_Log rows falling in the current Mon–Sun week
+  var dayOfWeek    = now.getDay();
+  var mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  var monday       = new Date(now);
+  monday.setDate(now.getDate() + mondayOffset);
+  var sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  var mondayStr = formatDateISO(monday);
+  var sundayStr = formatDateISO(sunday);
+
+  var logData = getData('Health_Log');
+  var weekLog = logData.rows
+    .filter(function(r) { return r.data['date'] >= mondayStr && r.data['date'] <= sundayStr; })
+    .map(function(r) {
+      return {
+        date:        r.data['date'],
+        activity_id: r.data['activity_id'],
+        completed:   String(r.data['completed']).toUpperCase() === 'TRUE'
+      };
+    });
+
+  // todayCompleted: activity ids logged as complete today
+  var todayCompleted = weekLog
+    .filter(function(e) { return e.date === todayStr && e.completed; })
+    .map(function(e) { return e.activity_id; });
+
+  return {
+    activities:     activities,
+    streaks:        streaks,
+    weekLog:        weekLog,
+    todayScheduled: todayScheduled,
+    todayCompleted: todayCompleted
+  };
+}
+
+// ─── Health streak helpers ────────────────────────────────────────────────────
+// Formats a Date object as YYYY-MM-DD (the format used in Health_Log).
+function formatDateISO(d) {
+  var yyyy = d.getFullYear();
+  var mm   = String(d.getMonth() + 1).padStart(2, '0');
+  var dd   = String(d.getDate()).padStart(2, '0');
+  return yyyy + '-' + mm + '-' + dd;
+}
+
+// Returns the current streak (integer) for a given activityId.
+// Streak = consecutive completed sessions walking backwards through scheduled
+// days only. A missed scheduled day resets to 0. If today is a scheduled day
+// with no log entry yet, it is skipped (not treated as a miss).
+function calculateStreak(activityId) {
+  var DAY_MAP = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+  // Get scheduled days for this activity
+  var actData = getData('Health_Activities');
+  var actRow  = null;
+  actData.rows.forEach(function(r) {
+    if (r.data['id'] === activityId) actRow = r;
+  });
+  if (!actRow) return 0;
+
+  var daysStr = (actRow.data['days'] || '').trim();
+  if (!daysStr) return 0; // unscheduled (e.g. running before unlock)
+
+  var scheduledDayNums = daysStr.split(',').map(function(d) {
+    return DAY_MAP[d.trim()];
+  }).filter(function(n) { return n !== undefined; });
+
+  if (scheduledDayNums.length === 0) return 0;
+
+  // Build log map: YYYY-MM-DD -> completed boolean
+  var logData = getData('Health_Log');
+  var logMap  = {};
+  logData.rows.forEach(function(r) {
+    if (r.data['activity_id'] === activityId) {
+      logMap[r.data['date']] = String(r.data['completed']).toUpperCase() === 'TRUE';
+    }
+  });
+
+  var now = new Date();
+  now.setHours(0, 0, 0, 0);
+  var todayStr = formatDateISO(now);
+
+  var streak  = 0;
+  var started = false; // becomes true once we start evaluating (after skipping today if needed)
+  var cursor  = new Date(now);
+
+  for (var i = 0; i < 365; i++) {
+    if (scheduledDayNums.indexOf(cursor.getDay()) !== -1) {
+      var dateStr = formatDateISO(cursor);
+
+      // Skip today if it is the first scheduled day we encounter and has no log entry
+      if (!started && dateStr === todayStr && logMap[dateStr] === undefined) {
+        cursor.setDate(cursor.getDate() - 1);
+        continue;
+      }
+
+      started = true;
+
+      if (logMap[dateStr] === true) {
+        streak++;
+      } else {
+        break; // no entry or completed=FALSE — streak is broken
+      }
+    }
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return streak;
+}
+
+// Returns streaks for all activities: { stretch: 9, kettlebell: 3, running: 0 }
+// Includes locked activities (they will return 0 if unscheduled).
+function getAllStreaks() {
+  var actData = getData('Health_Activities');
+  var streaks = {};
+  actData.rows.forEach(function(r) {
+    streaks[r.data['id']] = calculateStreak(r.data['id']);
+  });
+  return streaks;
 }
 
 // ─── Calendar helpers ─────────────────────────────────────────────────────────

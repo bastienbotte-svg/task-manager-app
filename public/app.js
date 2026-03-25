@@ -401,7 +401,7 @@ function saveProjectSortOrder(tabName, projectsList) {
 
 // ─── Flat tab (Inbox, Michel_Review, Archive) ─────────────────────────────────
 function renderFlatTab(tabName, data, container) {
-  const { headers, rows } = data;
+  const { rows } = data;
   let html = '';
 
   if (tabName === 'Inbox') {
@@ -1121,11 +1121,14 @@ function setupEventListeners() {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
   try {
-    tabs = await gasGet({ action: 'tabs' });
+    const allTabs = await gasGet({ action: 'tabs' });
+    // Strip internal health/data tabs — they are not task tabs
+    tabs = allTabs.filter(t => !['Health_Activities', 'Health_Log', 'INDEX'].includes(t));
     renderTabNav();
     if (tabs.length > 0) await switchTab(tabs[0]);
     setupEventListeners();
-    // Prefetch all other tabs in the background
+    setupBottomNav();
+    // Prefetch task tabs in background
     tabs.forEach(tab => {
       if (tabDataCache[tab]) return;
       const fetch = FLAT_TABS.has(tab)
@@ -1133,6 +1136,8 @@ async function init() {
         : fetchHierarchicalData(tab);
       fetch.then(data => { tabDataCache[tab] = data; }).catch(() => {});
     });
+    // Prefetch health data in background
+    gasGet({ action: 'getHealthData' }).then(data => { healthData = data; }).catch(() => {});
   } catch (err) {
     document.getElementById('main-content').innerHTML =
       `<div class="loading">Failed to connect to backend: ${esc(err.message)}</div>`;
@@ -1140,3 +1145,286 @@ async function init() {
 }
 
 init();
+
+// ─── App-level tab switching (TASKS / HEALTH / FINANCE / GROCERY) ─────────────
+let currentAppTab = 'tasks';
+let healthData    = null;
+
+const DAY_SUN_FIRST = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function dateToISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function getMondayOfWeek() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const offset = d.getDay() === 0 ? -6 : 1 - d.getDay();
+  d.setDate(d.getDate() + offset);
+  return d;
+}
+
+function setupBottomNav() {
+  document.querySelectorAll('.bottom-tab-btn').forEach(btn =>
+    btn.addEventListener('click', () => switchAppTab(btn.dataset.appTab))
+  );
+}
+
+function switchAppTab(appTab) {
+  currentAppTab = appTab;
+  document.querySelectorAll('.bottom-tab-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.appTab === appTab)
+  );
+  const sheetNav = document.getElementById('tab-nav');
+  if (appTab === 'tasks') {
+    sheetNav.style.display = '';
+    if (currentTab && tabDataCache[currentTab]) renderTabContent(currentTab, tabDataCache[currentTab]);
+    else if (tabs.length > 0) switchTab(tabs[0]);
+  } else if (appTab === 'health') {
+    sheetNav.style.display = 'none';
+    loadHealthTab();
+  } else {
+    sheetNav.style.display = 'none';
+    const label = appTab === 'finance' ? 'FINANCE' : 'GROCERY';
+    document.getElementById('main-content').innerHTML =
+      `<div class="placeholder-tab">${label}<br><br>COMING SOON</div>`;
+  }
+}
+
+// ─── Health data fetch ────────────────────────────────────────────────────────
+async function loadHealthTab() {
+  const main = document.getElementById('main-content');
+  if (healthData) renderHealthTab(healthData); // instant render from cache
+  else main.innerHTML = '<div class="loading"><span class="spinner"></span> Loading...</div>';
+  try {
+    const data = await gasGet({ action: 'getHealthData' });
+    healthData = data;
+    if (currentAppTab === 'health') renderHealthTab(data);
+  } catch (err) {
+    if (!healthData && currentAppTab === 'health')
+      main.innerHTML = `<div class="loading">Failed to load health data: ${esc(err.message)}</div>`;
+  }
+}
+
+// ─── Health tab rendering ─────────────────────────────────────────────────────
+function renderHealthTab(data) {
+  const main   = document.getElementById('main-content');
+  const today  = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = dateToISO(today);
+
+  // ── Progress bar ────────────────────────────────────────────────────────────
+  const totalSessions = data.activities
+    .filter(a => a.status === 'active' && a.days)
+    .reduce((sum, a) => sum + a.days.split(',').length, 0);
+  const completedSessions = data.weekLog.filter(e => e.completed).length;
+  const remaining = Math.max(0, totalSessions - completedSessions);
+
+  let progressBar = '';
+  for (let i = 0; i < totalSessions; i++) {
+    progressBar += `<div class="health-progress-seg${i < completedSessions ? ' filled' : ''}"></div>`;
+  }
+  if (totalSessions === 0) progressBar = '<div class="health-progress-seg"></div>';
+
+  // ── TODAY cards ──────────────────────────────────────────────────────────────
+  const todayActivities = data.activities.filter(a => data.todayScheduled.includes(a.id));
+  let todayHtml = todayActivities.length === 0
+    ? '<div class="health-card-empty">NO SESSIONS SCHEDULED TODAY</div>'
+    : todayActivities.map(act => {
+        const done       = data.todayCompleted.includes(act.id);
+        const streak     = data.streaks[act.id] || 0;
+        const daysLabel  = act.days ? act.days.split(',').map(d => d.trim().toUpperCase()).join(' ') : '—';
+        return `
+          <div class="health-card health-card-today" id="hcard-${act.id}">
+            <button class="health-check-btn${done ? ' checked' : ''}"
+                    data-activity-id="${escAttr(act.id)}"
+                    data-date="${todayStr}"
+                    data-completed="${done}">
+              ${done ? '✓' : ''}
+            </button>
+            <div class="health-card-body">
+              <div class="health-card-name">${esc(act.name.toUpperCase())}</div>
+              <div class="health-card-meta">${esc(act.category)} · ${esc(daysLabel)}</div>
+            </div>
+            <div class="health-card-streak">STREAK · ${streak}</div>
+          </div>`;
+      }).join('');
+
+  // ── COMING UP: next 2 sessions after today ───────────────────────────────────
+  const upcoming = getUpcomingSessions(data, today);
+  const upcomingHtml = upcoming.length === 0
+    ? '<div class="health-card-empty">—</div>'
+    : upcoming.map(({ activity: act, date, dayName }) => {
+        const daysLabel = act.days ? act.days.split(',').map(d => d.trim().toUpperCase()).join(' ') : '—';
+        const streak    = data.streaks[act.id] || 0;
+        const dayLabel  = `${dayName.toUpperCase()} ${date.getDate()}`;
+        return `
+          <div class="health-card health-card-upcoming">
+            <div class="health-card-body">
+              <div class="health-card-day-label">${dayLabel}</div>
+              <div class="health-card-name">${esc(act.name.toUpperCase())}</div>
+              <div class="health-card-meta">${esc(act.category)} · ${esc(daysLabel)}</div>
+            </div>
+            <div class="health-card-streak">${streak > 0 ? `STREAK · ${streak}` : ''}</div>
+          </div>`;
+      }).join('');
+
+  // ── LOCKED activities ────────────────────────────────────────────────────────
+  const lockedActivities = data.activities.filter(a => a.status === 'locked');
+  let lockedHtml = '';
+  lockedActivities.forEach(act => {
+    const match = act.unlock_condition ? act.unlock_condition.match(/^(\w+)_streak>=(\d+)$/) : null;
+    if (match) {
+      const refId      = match[1];
+      const threshold  = match[2];
+      const refAct     = data.activities.find(a => a.id === refId);
+      const refName    = refAct ? refAct.name.toUpperCase() : refId.toUpperCase();
+      const current    = data.streaks[refId] || 0;
+      lockedHtml += `
+        <div class="health-card health-card-locked">
+          <div class="health-card-body">
+            <div class="health-card-name">${esc(act.name.toUpperCase())}</div>
+            <div class="health-card-meta">${esc(act.category)}</div>
+          </div>
+          <div class="health-card-streak">UNLOCK AT ${esc(threshold)}<br>${esc(refName)} STREAK<br>${esc(String(current))} / ${esc(threshold)}</div>
+        </div>`;
+    }
+  });
+
+  // ── Consistency grid ─────────────────────────────────────────────────────────
+  const monday    = getMondayOfWeek();
+  const weekDates = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    weekDates.push(d);
+  }
+  const WEEK_LABELS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+
+  const logLookup = {};
+  data.weekLog.forEach(e => { logLookup[`${e.date}|${e.activity_id}`] = e.completed; });
+
+  const gridHead = '<th class="activity-label"></th>' +
+    weekDates.map((d, i) => {
+      const isToday = dateToISO(d) === todayStr;
+      return `<th${isToday ? ' class="today-col"' : ''}>${WEEK_LABELS[i]}</th>`;
+    }).join('');
+
+  const gridRows = data.activities.map(act => {
+    const scheduledDays = act.days ? act.days.split(',').map(d => d.trim()) : [];
+    const cells = weekDates.map(d => {
+      const ds          = dateToISO(d);
+      const dayName     = DAY_SUN_FIRST[d.getDay()];
+      const isScheduled = scheduledDays.includes(dayName);
+      const isDone      = logLookup[`${ds}|${act.id}`] === true;
+      const isFuture    = ds >= todayStr; // includes today (not yet a miss)
+
+      let cls = 'grid-cell ';
+      if (act.status === 'locked') {
+        cls += 'locked';
+      } else if (isScheduled) {
+        cls += isDone ? 'done' : isFuture ? 'scheduled-future' : 'scheduled-missed';
+      } else {
+        cls += 'rest';
+      }
+      return `<td><span class="${cls}"></span></td>`;
+    }).join('');
+    return `<tr>
+      <td class="activity-label">${esc(act.name.slice(0, 9).toUpperCase())}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  // ── Assemble ─────────────────────────────────────────────────────────────────
+  main.innerHTML = `
+    <div class="health-screen">
+      <div class="health-title">HEALTH TRACKER</div>
+      <div class="health-progress-bar">${progressBar}</div>
+      <div class="health-progress-label">${completedSessions} COMPLETED / ${remaining} REMAINING</div>
+
+      <div class="health-section-label">TODAY</div>
+      ${todayHtml}
+
+      <div class="health-section-label">COMING UP</div>
+      ${upcomingHtml}
+
+      ${lockedActivities.length > 0 ? `<div class="health-section-label">LOCKED</div>${lockedHtml}` : ''}
+
+      <div class="health-section-label">CONSISTENCY</div>
+      <table class="health-grid">
+        <thead><tr>${gridHead}</tr></thead>
+        <tbody>${gridRows}</tbody>
+      </table>
+    </div>`;
+
+  // Attach checkmark listeners
+  main.querySelectorAll('.health-check-btn').forEach(btn =>
+    btn.addEventListener('click', () => handleHealthCheck(btn))
+  );
+}
+
+function getUpcomingSessions(data, today) {
+  const sessions = [];
+  data.activities
+    .filter(a => a.status === 'active' && a.days)
+    .forEach(act => {
+      const scheduledDays = act.days.split(',').map(d => d.trim());
+      for (let i = 1; i <= 7; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        if (scheduledDays.includes(DAY_SUN_FIRST[d.getDay()])) {
+          sessions.push({ activity: act, date: d, dayName: DAY_SUN_FIRST[d.getDay()] });
+          break;
+        }
+      }
+    });
+  sessions.sort((a, b) => a.date - b.date);
+  return sessions.slice(0, 2);
+}
+
+async function handleHealthCheck(btn) {
+  const activityId  = btn.dataset.activityId;
+  const date        = btn.dataset.date;
+  const wasCompleted = btn.dataset.completed === 'true';
+  const nowCompleted = !wasCompleted;
+
+  // Optimistic UI update
+  btn.disabled = true;
+  btn.dataset.completed = String(nowCompleted);
+  btn.classList.toggle('checked', nowCompleted);
+  btn.textContent = nowCompleted ? '✓' : '';
+
+  // Update local cache so instant re-render is correct
+  if (healthData) {
+    if (nowCompleted && !healthData.todayCompleted.includes(activityId))
+      healthData.todayCompleted.push(activityId);
+    else if (!nowCompleted)
+      healthData.todayCompleted = healthData.todayCompleted.filter(id => id !== activityId);
+    const logEntry = healthData.weekLog.find(e => e.date === date && e.activity_id === activityId);
+    if (logEntry) logEntry.completed = nowCompleted;
+    else healthData.weekLog.push({ date, activity_id: activityId, completed: nowCompleted });
+  }
+
+  try {
+    await gasPost({ action: 'logActivity', activityId, date, completed: nowCompleted });
+    // Refresh to get updated streaks
+    const fresh = await gasGet({ action: 'getHealthData' });
+    healthData = fresh;
+    if (currentAppTab === 'health') renderHealthTab(fresh);
+  } catch (err) {
+    // Revert optimistic update
+    if (healthData) {
+      if (wasCompleted && !healthData.todayCompleted.includes(activityId))
+        healthData.todayCompleted.push(activityId);
+      else if (!wasCompleted)
+        healthData.todayCompleted = healthData.todayCompleted.filter(id => id !== activityId);
+      const logEntry = healthData.weekLog.find(e => e.date === date && e.activity_id === activityId);
+      if (logEntry) logEntry.completed = wasCompleted;
+    }
+    btn.disabled = false;
+    btn.dataset.completed = String(wasCompleted);
+    btn.classList.toggle('checked', wasCompleted);
+    btn.textContent = wasCompleted ? '✓' : '';
+    toast('Failed to save — try again');
+  }
+}
