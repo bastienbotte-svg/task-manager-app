@@ -2,7 +2,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Share Tech Mono', monospace;
   background: #ffffff;
   color: #2B2620;
   font-size: 14px;
@@ -27,60 +27,42 @@ body {
 }
 
 .login-logo {
-  font-size: 32px;
-  font-weight: 300;
+  font-size: 28px;
+  font-weight: normal;
   color: #2B2620;
-  letter-spacing: -0.5px;
+  letter-spacing: 4px;
 }
 
 .login-subtitle {
-  font-size: 14px;
-  color: #6B5F58;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #999999;
 }
 
 .btn-signin {
   padding: 10px 24px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 /* ─── Header ────────────────────────────────────────────────────────────────── */
 header {
-  background: #ffffff;
-  height: 56px;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.app-title {
-  font-size: 18px;
-  font-weight: 500;
-  color: #2B2620;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: none;
 }
 
 /* ─── Tab nav ───────────────────────────────────────────────────────────────── */
 #tab-nav {
   background: #ffffff;
-  border-radius: 0 0 20px 20px;
-  box-shadow: 0 6px 16px rgba(43, 38, 32, 0.08);
-  padding: 0 24px;
+  border-bottom: 1px solid #E5E5E5;
+  padding: 0 16px;
   display: flex;
   overflow-x: auto;
   scrollbar-width: none;
   position: sticky;
-  top: 56px;
+  top: 0;
   z-index: 99;
 }
+
+#tab-nav:empty { display: none; }
 
 #tab-nav::-webkit-scrollbar { display: none; }
 
@@ -88,31 +70,33 @@ header {
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  padding: 14px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #6B5F58;
+  padding: 12px 14px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  font-weight: normal;
+  letter-spacing: 1.2px;
+  color: #AAAAAA;
   cursor: pointer;
   white-space: nowrap;
   transition: color 0.15s, border-color 0.15s;
-  letter-spacing: 0.1px;
 }
 
-.tab-btn:hover { color: #687259; }
-.tab-btn.active { color: #687259; border-bottom-color: #687259; }
+.tab-btn:hover { color: #DB7F50; }
+.tab-btn.active { color: #DB7F50; border-bottom-color: #DB7F50; }
 
 /* ─── Main content ──────────────────────────────────────────────────────────── */
 #main-content {
   max-width: 860px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 20px 16px;
 }
 
 .loading {
   text-align: center;
-  color: #8C7E77;
+  color: #AAAAAA;
   padding: 64px 0;
-  font-size: 14px;
+  font-size: 12px;
+  letter-spacing: 1px;
 }
 
 /* ─── Buttons ───────────────────────────────────────────────────────────────── */
@@ -123,33 +107,34 @@ header {
   padding: 7px 16px;
   border: none;
   border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  font-weight: normal;
+  letter-spacing: 0.8px;
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.1s, opacity 0.1s;
-  font-family: inherit;
   text-decoration: none;
 }
 
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.btn-primary   { background: #687259; color: #fff; }
-.btn-primary:hover { background: #556148; }
+.btn-primary   { background: #DB7F50; color: #fff; }
+.btn-primary:hover { background: #C4693C; }
 
-.btn-secondary { background: #EAEAE0; color: #687259; }
-.btn-secondary:hover { background: #D5D5C8; }
+.btn-secondary { background: #F0F0F0; color: #DB7F50; }
+.btn-secondary:hover { background: #E0E0E0; }
 
-.btn-outline   { background: #fff; border: 1px solid #dadce0; color: #2B2620; }
-.btn-outline:hover { background: #F0EBE3; }
+.btn-outline   { background: #fff; border: 1px solid #E0E0E0; color: #2B2620; }
+.btn-outline:hover { background: #F5F5F5; }
 
-.btn-ghost     { background: none; color: #6B5F58; }
-.btn-ghost:hover { background: #F0F0F0; }
+.btn-ghost     { background: none; color: #999999; }
+.btn-ghost:hover { background: #F5F5F5; }
 
 .btn-danger    { background: none; color: #d93025; }
 .btn-danger:hover { background: #fce8e6; }
 
-.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-sm { padding: 4px 10px; font-size: 10px; }
 
 /* ─── Tab toolbar ───────────────────────────────────────────────────────────── */
 .tab-toolbar {
@@ -162,9 +147,9 @@ header {
 /* ─── Project card ──────────────────────────────────────────────────────────── */
 .project-card {
   background: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 16px;
-  margin-bottom: 10px;
+  border: 1px solid #E5E5E5;
+  border-radius: 12px;
+  margin-bottom: 8px;
   overflow: visible;
 }
 
@@ -176,17 +161,17 @@ header {
   user-select: none;
   gap: 8px;
   min-height: 48px;
-  border-radius: 16px;
+  border-radius: 12px;
 }
 
-.project-header:hover { background: #F0EBE3; }
-.project-card:has(.task-list:not(.hidden)) .project-header { border-radius: 16px 16px 0 0; }
+.project-header:hover { background: #F5F5F5; }
+.project-card:has(.task-list:not(.hidden)) .project-header { border-radius: 12px 12px 0 0; }
 
 .project-name {
   flex: 1;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
   color: #2B2620;
+  letter-spacing: 0.3px;
 }
 
 /* ─── Project progress bar ──────────────────────────────────────────────────── */
@@ -198,25 +183,26 @@ header {
 }
 
 .project-progress-bar {
-  width: 100px;
-  height: 4px;
-  background: #e0e0e0;
+  width: 80px;
+  height: 3px;
+  background: #E5E5E5;
   border-radius: 2px;
   overflow: hidden;
 }
 
 .project-progress-fill {
   height: 100%;
-  background: #687259;
+  background: #DB7F50;
   border-radius: 2px;
   transition: width 0.3s ease;
 }
 
 .project-progress-label {
-  font-size: 11px;
-  color: #8C7E77;
+  font-size: 10px;
+  color: #AAAAAA;
   min-width: 28px;
   text-align: right;
+  letter-spacing: 0.3px;
 }
 
 /* ─── Row actions (shown on hover) ─────────────────────────────────────────── */
@@ -232,7 +218,7 @@ header {
 
 /* ─── Task list & rows ──────────────────────────────────────────────────────── */
 .task-list {
-  border-top: 1px solid #E8E2DA;
+  border-top: 1px solid #E5E5E5;
 }
 
 .task-row {
@@ -240,17 +226,18 @@ header {
   align-items: center;
   padding: 9px 14px 9px 36px;
   gap: 8px;
-  border-bottom: 1px solid #EEE8E0;
+  border-bottom: 1px solid #EEEEEE;
   min-height: 40px;
 }
 
 .task-row:last-child { border-bottom: none; }
-.task-row:hover { background: #F0EBE3; }
+.task-row:hover { background: #F5F5F5; }
 
 .task-name {
   flex: 1;
   font-size: 13px;
   color: #2B2620;
+  letter-spacing: 0.2px;
 }
 
 .task-name-link {
@@ -258,13 +245,13 @@ header {
 }
 
 .task-name-link:hover {
-  color: #687259;
+  color: #DB7F50;
   text-decoration: underline;
 }
 
 .task-name-strike {
   text-decoration: line-through;
-  color: #A89990;
+  color: #CCCCCC;
 }
 
 .task-done {
@@ -272,10 +259,11 @@ header {
 }
 
 .task-exec-date {
-  font-size: 11px;
-  color: #A89990;
+  font-size: 10px;
+  color: #AAAAAA;
   white-space: nowrap;
   flex-shrink: 0;
+  letter-spacing: 0.3px;
 }
 
 .task-status-btn {
@@ -290,38 +278,39 @@ header {
 /* ─── Add task row ──────────────────────────────────────────────────────────── */
 .add-task-row {
   padding: 6px 14px 6px 36px;
-  border-top: 1px solid #E8E2DA;
+  border-top: 1px solid #E5E5E5;
 }
 
 /* ─── Status badge ──────────────────────────────────────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
-  font-size: 11px;
-  font-weight: 500;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  font-weight: normal;
   padding: 2px 8px;
   border-radius: 10px;
   white-space: nowrap;
   flex-shrink: 0;
-  letter-spacing: 0.1px;
+  letter-spacing: 0.5px;
 }
 
-.badge-inbox      { background: #EAEAE0; color: #6B5F58; }
-.badge-todo       { background: #EAEAE0; color: #687259; }
+.badge-inbox      { background: #F0F0F0; color: #999999; }
+.badge-todo       { background: #F0F0F0; color: #777777; }
 .badge-inprogress { background: #fef7e0; color: #b06000; }
 .badge-blocked    { background: #fce8e6; color: #c5221f; }
-.badge-done       { background: #687259; color: #A2A182; }
+.badge-done       { background: #444444; color: #999999; }
 
 /* ─── Priority ──────────────────────────────────────────────────────────────── */
 .pri {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.5px;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-.pri-low    { color: #C4BDB6; }
-.pri-medium { color: #8C7E77; }
+.pri-low    { color: #CCCCCC; }
+.pri-medium { color: #AAAAAA; }
 .pri-high   { color: #e8710a; }
 .pri-urgent { color: #c5221f; }
 
@@ -335,8 +324,8 @@ header {
 
 .flat-row {
   background: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 16px;
+  border: 1px solid #E5E5E5;
+  border-radius: 12px;
   padding: 12px 16px;
   margin-bottom: 8px;
   display: flex;
@@ -345,22 +334,23 @@ header {
   transition: border-color 0.1s;
 }
 
-.flat-row:hover { border-color: #C4BDB6; }
+.flat-row:hover { border-color: #CCCCCC; }
 
 .flat-row-body { flex: 1; min-width: 0; }
 
 .flat-row-name {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
   color: #2B2620;
   margin-bottom: 3px;
+  letter-spacing: 0.2px;
 }
 
 .flat-row-notes {
-  font-size: 12px;
-  color: #6B5F58;
+  font-size: 11px;
+  color: #777777;
   white-space: pre-line;
   word-break: break-word;
+  letter-spacing: 0.2px;
 }
 
 .flat-row-meta {
@@ -372,10 +362,11 @@ header {
 }
 
 .flat-row-date {
-  font-size: 11px;
-  color: #A89990;
+  font-size: 10px;
+  color: #AAAAAA;
   white-space: nowrap;
   flex-shrink: 0;
+  letter-spacing: 0.3px;
 }
 
 .flat-row-actions {
@@ -391,8 +382,9 @@ header {
 .empty-state {
   text-align: center;
   padding: 40px 0;
-  color: #8C7E77;
-  font-size: 13px;
+  color: #AAAAAA;
+  font-size: 11px;
+  letter-spacing: 1px;
 }
 
 /* ─── Modals ────────────────────────────────────────────────────────────────── */
@@ -421,7 +413,7 @@ header {
   padding: 24px;
   width: 100%;
   max-width: 480px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -430,15 +422,17 @@ header {
 .modal-small { max-width: 320px; }
 
 .modal-box h2 {
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: normal;
+  letter-spacing: 1.5px;
   color: #2B2620;
 }
 
 .modal-context {
-  font-size: 12px;
-  color: #6B5F58;
+  font-size: 11px;
+  color: #777777;
   margin-top: -8px;
+  letter-spacing: 0.3px;
 }
 
 .modal-box input,
@@ -446,20 +440,21 @@ header {
 .modal-box select {
   width: 100%;
   padding: 9px 12px;
-  border: 1px solid #dadce0;
+  border: 1px solid #E0E0E0;
   border-radius: 4px;
-  font-size: 14px;
-  font-family: inherit;
+  font-size: 13px;
+  font-family: 'Share Tech Mono', monospace;
   color: #2B2620;
   background: #fff;
   resize: vertical;
   outline: none;
   transition: border-color 0.15s;
+  letter-spacing: 0.3px;
 }
 
 .modal-box input:focus,
 .modal-box textarea:focus,
-.modal-box select:focus { border-color: #687259; }
+.modal-box select:focus { border-color: #DB7F50; }
 
 .form-row {
   display: flex;
@@ -480,8 +475,8 @@ header {
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid #e0e0e0;
-  border-top-color: #687259;
+  border: 2px solid #E0E0E0;
+  border-top-color: #DB7F50;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
   margin-right: 6px;
@@ -500,7 +495,9 @@ header {
   color: #fff;
   padding: 10px 20px;
   border-radius: 4px;
-  font-size: 13px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.8px;
   z-index: 999;
   transition: transform 0.25s ease;
   pointer-events: none;
@@ -515,7 +512,7 @@ header {
   align-items: center;
   gap: 8px;
   padding: 5px 10px;
-  border: 1px solid #dadce0;
+  border: 1px solid #E0E0E0;
   border-radius: 4px;
   background: #fff;
   user-select: none;
@@ -523,7 +520,7 @@ header {
   min-height: 40px;
 }
 
-.tc-wrap:focus-within { border-color: #687259; }
+.tc-wrap:focus-within { border-color: #DB7F50; }
 
 .tc-unit {
   display: flex;
@@ -536,7 +533,7 @@ header {
   background: none;
   border: none;
   cursor: pointer;
-  color: #A89990;
+  color: #AAAAAA;
   font-size: 8px;
   padding: 2px 8px;
   border-radius: 2px;
@@ -545,11 +542,11 @@ header {
   display: block;
 }
 
-.tc-btn:hover { background: #F0F0F0; color: #687259; }
+.tc-btn:hover { background: #F0F0F0; color: #DB7F50; }
 
 .tc-val {
   font-size: 20px;
-  font-weight: 500;
+  font-weight: normal;
   min-width: 28px;
   text-align: center;
   color: #2B2620;
@@ -560,23 +557,24 @@ header {
 
 .tc-colon {
   font-size: 20px;
-  font-weight: 300;
-  color: #6B5F58;
+  font-weight: normal;
+  color: #AAAAAA;
   padding-bottom: 6px;
 }
 
 .tc-unit-lbl {
   font-size: 10px;
-  color: #A89990;
+  color: #AAAAAA;
   text-align: center;
   line-height: 1.4;
+  letter-spacing: 0.5px;
 }
 
 .tc-clear-btn {
   background: none;
   border: none;
   cursor: pointer;
-  color: #C4BDB6;
+  color: #CCCCCC;
   font-size: 12px;
   padding: 4px 5px;
   margin-left: auto;
@@ -617,18 +615,18 @@ header {
 }
 
 .detail-field label {
-  font-size: 11px;
-  font-weight: 500;
-  color: #8C7E77;
+  font-size: 10px;
+  font-weight: normal;
+  color: #999999;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 /* ─── Drag handle & sortable ─────────────────────────────────────────────────── */
 .drag-handle {
   width: 10px;
   height: 10px;
-  background: #dadce0;
+  background: #E0E0E0;
   border-radius: 1px;
   flex-shrink: 0;
   cursor: grab;
@@ -641,7 +639,7 @@ header {
 .project-drag-handle {
   width: 10px;
   height: 10px;
-  background: #dadce0;
+  background: #E0E0E0;
   border-radius: 1px;
   flex-shrink: 0;
   cursor: grab;
@@ -656,18 +654,15 @@ header {
   .project-drag-handle { opacity: 0.5; }
 }
 
-.sortable-ghost { opacity: 0.35; background: #EAEAE0; }
+.sortable-ghost { opacity: 0.35; background: #F0F0F0; }
 
 /* ─── Utility ───────────────────────────────────────────────────────────────── */
 .hidden { display: none !important; }
 
 /* ─── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
-  header { padding: 0 12px; }
   #tab-nav { padding: 0 12px; }
-  #main-content { padding: 16px 10px; }
-  .header-right .btn-ghost { display: none; }
-  .app-title { font-size: 16px; }
+  #main-content { padding: 16px 12px; }
   .modal-box { padding: 18px; }
 }
 
@@ -694,7 +689,7 @@ body { padding-bottom: 68px; }
   font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
   letter-spacing: 0.8px;
-  color: #C4BDB6;
+  color: #CCCCCC;
   cursor: pointer;
   padding: 0;
   transition: color 0.15s;
@@ -706,7 +701,7 @@ body { padding-bottom: 68px; }
 }
 
 .bottom-tab-btn.active { color: #DB7F50; }
-.bottom-tab-btn:hover:not(.active) { color: #A89990; }
+.bottom-tab-btn:hover:not(.active) { color: #AAAAAA; }
 
 /* ─── Health tab ─────────────────────────────────────────────────────────────── */
 .health-screen {
@@ -716,7 +711,7 @@ body { padding-bottom: 68px; }
 .health-title {
   font-size: 26px;
   letter-spacing: 4px;
-  font-weight: bold;
+  font-weight: normal;
   color: #2B2620;
   margin-bottom: 20px;
 }
@@ -732,13 +727,13 @@ body { padding-bottom: 68px; }
 .health-progress-title {
   font-size: 9px;
   letter-spacing: 1.2px;
-  color: #A89990;
+  color: #AAAAAA;
 }
 
 .health-progress-pct {
   font-size: 9px;
   letter-spacing: 0.5px;
-  color: #6B5F58;
+  color: #777777;
 }
 
 /* Segmented progress bar */
@@ -754,7 +749,7 @@ body { padding-bottom: 68px; }
   flex: 1;
   height: 10px;
   border-radius: 2px;
-  background: #E6CEBC;
+  background: #E5E5E5;
 }
 
 .health-progress-seg.filled { background: #2B2620; }
@@ -765,7 +760,7 @@ body { padding-bottom: 68px; }
   justify-content: space-between;
   font-size: 9px;
   letter-spacing: 0.8px;
-  color: #A89990;
+  color: #AAAAAA;
   margin-bottom: 4px;
 }
 
@@ -773,7 +768,7 @@ body { padding-bottom: 68px; }
 .health-section-label {
   font-size: 10px;
   letter-spacing: 1.5px;
-  color: #A89990;
+  color: #AAAAAA;
   margin-top: 24px;
   margin-bottom: 10px;
 }
@@ -785,7 +780,7 @@ body { padding-bottom: 68px; }
 /* Activity cards */
 .health-card {
   border-radius: 8px;
-  padding: 14px 14px;
+  padding: 14px;
   margin-bottom: 8px;
   display: flex;
   align-items: center;
@@ -807,35 +802,39 @@ body { padding-bottom: 68px; }
   flex-shrink: 0;
 }
 
-.health-icon-today  { background: rgba(255,255,255,0.15); color: #fff; }
-.health-icon-upcoming { background: #F0F0F0; color: #888; }
-.health-icon-locked { background: #F0F0F0; color: #C4BDB6; }
+.health-icon-today    { background: rgba(255,255,255,0.15); color: #fff; }
+.health-icon-upcoming { background: #F0F0F0; color: #888888; }
+.health-icon-locked   { background: #F0F0F0; color: #CCCCCC; }
 
 .health-card-body { flex: 1; min-width: 0; }
 
 .health-card-name {
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: 0.5px;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
-.health-card-today    .health-card-name { color: #fff; }
-.health-card-locked   .health-card-name { color: #C4BDB6; }
+.health-card-today  .health-card-name { color: #fff; }
+.health-card-locked .health-card-name { color: #CCCCCC; }
 .health-name-accent { color: #DB7F50; }
 
-.health-card-meta { font-size: 9px; letter-spacing: 0.3px; }
+.health-card-meta {
+  font-size: 9px;
+  letter-spacing: 0.3px;
+  color: #999999;
+}
 
-.health-card-today .health-card-meta { color: #8C7E77; }
-.health-card-locked .health-card-meta { color: #D5D0CB; }
+.health-card-today  .health-card-meta { color: #888888; }
+.health-card-locked .health-card-meta { color: #CCCCCC; }
 
 .health-card-day-label {
   font-size: 9px;
   letter-spacing: 0.5px;
-  color: #A89990;
+  color: #AAAAAA;
   margin-top: 2px;
 }
 
-/* Streak block (two-line: label + big number) */
+/* Streak block */
 .health-streak-block {
   text-align: right;
   flex-shrink: 0;
@@ -845,7 +844,7 @@ body { padding-bottom: 68px; }
 .health-streak-lbl {
   font-size: 8px;
   letter-spacing: 1px;
-  color: #8C7E77;
+  color: #888888;
   margin-bottom: 1px;
 }
 
@@ -856,10 +855,10 @@ body { padding-bottom: 68px; }
   line-height: 1;
 }
 
-.health-streak-lbl-dark { color: #A89990; }
+.health-streak-lbl-dark { color: #AAAAAA; }
 .health-streak-num-dark { color: #2B2620; }
 
-/* Checkmark button — circular */
+/* Circular check button */
 .health-check-btn {
   background: none;
   border: 2px solid rgba(255,255,255,0.35);
@@ -884,7 +883,7 @@ body { padding-bottom: 68px; }
 }
 
 .health-check-btn-outline {
-  border-color: #D5C8BE;
+  border-color: #DDDDDD;
 }
 
 .health-check-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -893,35 +892,30 @@ body { padding-bottom: 68px; }
 .health-locked-info {
   text-align: right;
   flex-shrink: 0;
-  line-height: 1.6;
+  line-height: 1.4;
 }
 
 .health-locked-line1 {
   font-size: 9px;
   letter-spacing: 0.8px;
-  color: #A89990;
+  color: #AAAAAA;
 }
 
 .health-locked-line2 {
   font-size: 9px;
-  color: #C4BDB6;
+  color: #CCCCCC;
 }
 
 .health-locked-num {
   font-size: 24px;
-  color: #A89990;
+  color: #AAAAAA;
   line-height: 1;
-}
-
-.health-locked-progress {
-  font-size: 9px;
-  color: #DB7F50;
 }
 
 .health-lock-icon {
   font-size: 14px;
   flex-shrink: 0;
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 /* No-sessions message */
@@ -929,7 +923,7 @@ body { padding-bottom: 68px; }
   font-family: 'Share Tech Mono', monospace;
   font-size: 10px;
   letter-spacing: 0.5px;
-  color: #C4BDB6;
+  color: #CCCCCC;
   padding: 8px 0;
 }
 
@@ -944,7 +938,7 @@ body { padding-bottom: 68px; }
   font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
   letter-spacing: 0.5px;
-  color: #A89990;
+  color: #AAAAAA;
   text-align: center;
   padding: 0 0 8px 0;
   font-weight: normal;
@@ -986,8 +980,8 @@ body { padding-bottom: 68px; }
 }
 
 .grid-cell.done             { background: #2B2620; }
-.grid-cell.scheduled-future { background: #EDE5DC; }
-.grid-cell.scheduled-missed { background: #fff; border: 1.5px solid #e0d8d0; }
+.grid-cell.scheduled-future { background: #E5E5E5; }
+.grid-cell.scheduled-missed { background: #fff; border: 1.5px solid #E0E0E0; }
 .grid-cell.rest             { background: transparent; }
 .grid-cell.locked           { background: transparent; opacity: 0.3; }
 
@@ -998,6 +992,6 @@ body { padding-bottom: 68px; }
   font-family: 'Share Tech Mono', monospace;
   font-size: 11px;
   letter-spacing: 1.5px;
-  color: #C4BDB6;
+  color: #CCCCCC;
   line-height: 2;
 }
