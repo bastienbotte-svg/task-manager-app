@@ -123,9 +123,9 @@ const FLAT_TABS = new Set(['Inbox', 'Michel_Review', 'Archive', 'Social']);
 function renderTabNav() {
   const nav = document.getElementById('tab-nav');
   nav.innerHTML = tabs
-    .map(t => `<button class="tab-btn${t === currentTab ? ' active' : ''}" data-tab="${escAttr(t)}">${esc(t.replace(/_/g, ' '))}</button>`)
+    .map(t => `<div class="cat-tab${t === currentTab ? ' active' : ''}" data-tab="${escAttr(t)}">${esc(t.replace(/_/g, ' '))}</div>`)
     .join('');
-  nav.querySelectorAll('.tab-btn').forEach(btn =>
+  nav.querySelectorAll('.cat-tab').forEach(btn =>
     btn.addEventListener('click', () => switchTab(btn.dataset.tab))
   );
 }
@@ -183,7 +183,7 @@ async function switchTab(tabName) {
 }
 
 async function loadTabData(tabName) {
-  const main = document.getElementById('main-content');
+  const main = document.getElementById('projects');
   main.innerHTML = '<div class="loading"><span class="spinner"></span> Loading...</div>';
   try {
     const data = FLAT_TABS.has(tabName)
@@ -198,7 +198,7 @@ async function loadTabData(tabName) {
 
 // ─── Render dispatch ──────────────────────────────────────────────────────────
 function renderTabContent(tabName, data) {
-  const main = document.getElementById('main-content');
+  const main = document.getElementById('projects');
   if (tabName === 'Social') {
     renderSocialTab(tabName, data, main);
   } else if (FLAT_TABS.has(tabName)) {
@@ -213,12 +213,7 @@ function renderHierarchicalTab(tabName, data, container) {
   const { rows } = data;
   const projects = rows.filter(r => r.data['Type'] === 'PROJECT');
   const tasks    = rows.filter(r => r.data['Type'] === 'TASK');
-  const orphans  = rows.filter(r => r.data['Type'] !== 'PROJECT' && r.data['Type'] !== 'TASK' && r.data['Name']);
-
-  let html = `
-    <div class="tab-toolbar">
-      <button class="btn btn-secondary btn-sm btn-add-project" data-tab="${escAttr(tabName)}">+ New Project</button>
-    </div>`;
+  let html = '';
 
   if (rows.length === 0) {
     html += '<div class="empty-state">No items yet. Create your first project above.</div>';
@@ -229,7 +224,7 @@ function renderHierarchicalTab(tabName, data, container) {
     ? [...projects].sort((a, b) => parseInt(a.data['Sort_Order'] || '0', 10) - parseInt(b.data['Sort_Order'] || '0', 10))
     : projects;
 
-  html += `<div class="projects-list" data-tab="${escAttr(tabName)}">`;
+  const TOTAL_SEGS = 28;
 
   for (const proj of sortedProjects) {
     const p = proj.data;
@@ -237,46 +232,19 @@ function renderHierarchicalTab(tabName, data, container) {
     const totalTasks = projTasks.length;
     const doneTasks  = projTasks.filter(t => t.data['Status'] === 'Done').length;
     const pct = totalTasks > 0 ? Math.round(doneTasks / totalTasks * 100) : 0;
-    const hasSortOrder = projTasks.some(t => t.data['Sort_Order'] && parseInt(t.data['Sort_Order'], 10) > 0);
-    const sortedTasks = hasSortOrder
-      ? [...projTasks].sort((a, b) => parseInt(a.data['Sort_Order'] || '0', 10) - parseInt(b.data['Sort_Order'] || '0', 10))
-      : projTasks;
+
+    const filled = Math.round(pct / 100 * TOTAL_SEGS);
+    const cls = pct === 0 ? 'no-progress' : 'has-progress';
+    let segs = '';
+    for (let i = 0; i < TOTAL_SEGS; i++) {
+      segs += `<div class="bar-seg${i < filled ? ' filled' : ''}"></div>`;
+    }
 
     html += `
-      <div class="project-card" data-id="${esc(p['ID'])}" data-tab="${escAttr(tabName)}">
-        <div class="project-header" data-project-id="${esc(p['ID'])}">
-          <span class="project-drag-handle"></span>
-          <span class="project-name">${esc(p['Name'])}</span>
-          <div class="project-progress-wrap">
-            <div class="project-progress-bar">
-              <div class="project-progress-fill" style="width:${pct}%"></div>
-            </div>
-            <span class="project-progress-label">${pct}%</span>
-          </div>
-        </div>
-        <div class="task-list hidden" id="tl-${esc(p['ID'])}">
-          ${sortedTasks.map(t => renderTaskRow(t.data, tabName)).join('')}
-          <div class="add-task-row">
-            <button class="btn btn-ghost btn-sm btn-add-task" data-tab="${escAttr(tabName)}" data-pid="${esc(p['ID'])}" data-pname="${escAttr(p['Name'])}">+ Add task</button>
-          </div>
-        </div>
-      </div>`;
-  }
-
-  html += `</div>`;
-
-  if (orphans.length > 0) {
-    html += `
-      <div class="project-card">
-        <div class="project-header" data-project-id="__orphans">
-          <svg class="chevron open" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 4 10 8 6 12"/>
-          </svg>
-          <span class="project-name">Uncategorized</span>
-        </div>
-        <div class="task-list" id="tl-__orphans">
-          ${orphans.map(r => renderTaskRow(r.data, tabName)).join('')}
-        </div>
+      <div class="project-card ${cls}" data-id="${esc(p['ID'])}" data-tab="${escAttr(tabName)}">
+        <span class="project-name">${esc(p['Name'])}</span>
+        <div class="bar-wrap">${segs}</div>
+        <span class="pct">${pct}%</span>
       </div>`;
   }
 
@@ -744,10 +712,18 @@ function updateProjectProgress(tab, id) {
   const done  = projTasks.filter(r => r.data['Status'] === 'Done').length;
   const pct   = total > 0 ? Math.round(done / total * 100) : 0;
 
-  const fill  = document.querySelector(`.project-card[data-id="${projectId}"] .project-progress-fill`);
-  const label = document.querySelector(`.project-card[data-id="${projectId}"] .project-progress-label`);
-  if (fill)  fill.style.width   = pct + '%';
-  if (label) label.textContent  = pct + '%';
+  const card = document.querySelector(`.project-card[data-id="${projectId}"]`);
+  if (card) {
+    const TOTAL_SEGS = 28;
+    const filled = Math.round(pct / 100 * TOTAL_SEGS);
+    card.querySelectorAll('.bar-seg').forEach((seg, i) => {
+      seg.classList.toggle('filled', i < filled);
+    });
+    const label = card.querySelector('.pct');
+    if (label) label.textContent = pct + '%';
+    card.classList.toggle('has-progress', pct > 0);
+    card.classList.toggle('no-progress', pct === 0);
+  }
 }
 
 function checkProjectComplete(tab, id) {
@@ -838,7 +814,7 @@ function saveCapture() {
   toast('Saved to Inbox');
 
   if (currentTab === 'Inbox') {
-    const container = document.getElementById('main-content');
+    const container = document.getElementById('projects');
     const header = container.querySelector('.flat-section-header');
     const rowHtml = `
       <div class="flat-row" data-id="${esc(tempId)}">
@@ -941,16 +917,12 @@ function saveProject() {
   closeModal('modal-project');
   toast('Project created');
 
-  document.getElementById('main-content').insertAdjacentHTML('beforeend', `
-    <div class="project-card" data-id="${esc(tempId)}" data-tab="${escAttr(tab)}">
-      <div class="project-header" data-project-id="${esc(tempId)}">
-        <span class="project-name">${esc(name)}</span>
-        <div class="project-progress-wrap">
-          <div class="project-progress-bar"><div class="project-progress-fill" style="width:0%"></div></div>
-          <span class="project-progress-label">0%</span>
-        </div>
-      </div>
-      <div class="task-list hidden" id="tl-${esc(tempId)}"></div>
+  const emptySegs = Array.from({length: 28}, () => '<div class="bar-seg"></div>').join('');
+  document.getElementById('projects').insertAdjacentHTML('beforeend', `
+    <div class="project-card no-progress" data-id="${esc(tempId)}" data-tab="${escAttr(tab)}">
+      <span class="project-name">${esc(name)}</span>
+      <div class="bar-wrap">${emptySegs}</div>
+      <span class="pct">0%</span>
     </div>`);
 
   gasPost({ action: 'addRow', tab, data: { Type: 'PROJECT', Name: name, Status: status, Priority: priority, Notes: notes, Category: tab } })
@@ -1012,6 +984,9 @@ function setupEventListeners() {
   document.getElementById('btn-reload').addEventListener('click', async () => {
     if (currentTab) await loadTabData(currentTab);
   });
+
+  // New project
+  document.getElementById('btn-new-project').addEventListener('click', () => openAddProject(currentTab));
 
   // Quick capture
   document.getElementById('btn-quick-capture').addEventListener('click', openCapture);
@@ -1139,7 +1114,7 @@ async function init() {
     // Prefetch health data in background
     gasGet({ action: 'getHealthData' }).then(data => { healthData = data; }).catch(() => {});
   } catch (err) {
-    document.getElementById('main-content').innerHTML =
+    document.getElementById('projects').innerHTML =
       `<div class="loading">Failed to connect to backend: ${esc(err.message)}</div>`;
   }
 }
@@ -1190,9 +1165,11 @@ function setupBottomNav() {
 
 function switchAppTab(appTab) {
   currentAppTab = appTab;
-  document.querySelectorAll('.bottom-tab-btn').forEach(btn =>
-    btn.classList.toggle('active', btn.dataset.appTab === appTab)
-  );
+  document.querySelectorAll('.bottom-tab-btn').forEach(btn => {
+    const isActive = btn.dataset.appTab === appTab;
+    btn.classList.toggle('active', isActive);
+    btn.classList.toggle('inactive', !isActive);
+  });
   const sheetNav = document.getElementById('tab-nav');
   if (appTab === 'tasks') {
     sheetNav.style.display = '';
@@ -1204,14 +1181,14 @@ function switchAppTab(appTab) {
   } else {
     sheetNav.style.display = 'none';
     const label = appTab === 'finance' ? 'FINANCE' : 'GROCERY';
-    document.getElementById('main-content').innerHTML =
+    document.getElementById('projects').innerHTML =
       `<div class="placeholder-tab">${label}<br><br>COMING SOON</div>`;
   }
 }
 
 // ─── Health data fetch ────────────────────────────────────────────────────────
 async function loadHealthTab() {
-  const main = document.getElementById('main-content');
+  const main = document.getElementById('projects');
   if (healthData) renderHealthTab(healthData); // instant render from cache
   else main.innerHTML = '<div class="loading"><span class="spinner"></span> Loading...</div>';
   try {
@@ -1226,7 +1203,7 @@ async function loadHealthTab() {
 
 // ─── Health tab rendering ─────────────────────────────────────────────────────
 function renderHealthTab(data) {
-  const main   = document.getElementById('main-content');
+  const main   = document.getElementById('projects');
   const today  = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = dateToISO(today);

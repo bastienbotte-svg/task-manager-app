@@ -995,3 +995,105 @@ body { padding-bottom: 68px; }
   color: #CCCCCC;
   line-height: 2;
 }
+
+/* ─── Task Manager v2 — verbatim from reference ─────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#e8e8e8;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:2rem 0;font-family:'Share Tech Mono',monospace}
+.phone{background:#e8e8e8;border-radius:40px;padding:32px 20px 24px;max-width:360px;width:100%}
+.screen{background:#fff;border-radius:28px;overflow:hidden}
+.topbar{background:#fff;padding:18px 20px 12px;display:flex;align-items:center;justify-content:space-between}
+.app-title{font-family:'Share Tech Mono',monospace;font-size:16px;color:#111;letter-spacing:0.02em}
+.topbar-actions{display:flex;gap:8px}
+.icon-btn{width:34px;height:34px;border-radius:10px;border:1px solid #e0e0e0;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.icon-btn svg{width:16px;height:16px;stroke:#555;fill:none;stroke-width:1.5}
+.category-strip{display:flex;padding:0 20px;border-bottom:1px solid #eee;overflow-x:auto;scrollbar-width:none}
+.category-strip::-webkit-scrollbar{display:none}
+.cat-tab{font-family:'Share Tech Mono',monospace;font-size:11px;color:#aaa;padding:10px 12px;white-space:nowrap;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.cat-tab.active{color:#111;border-bottom:2px solid #111}
+.content{padding:14px 20px;background:#fff}
+.new-project{font-family:'Share Tech Mono',monospace;font-size:10px;color:#aaa;border:1px dashed #ddd;border-radius:8px;padding:7px 12px;display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;cursor:pointer}
+.new-project svg{width:12px;height:12px;stroke:#ccc;fill:none;stroke-width:2}
+.project-card{background:#fff;border-radius:14px;padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.project-card.has-progress{border:1.5px solid #e8e8e3}
+.project-card.no-progress{border:1.5px dashed #ddd}
+.project-name{font-family:'Share Tech Mono',monospace;font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.project-card.has-progress .project-name{color:#111}
+.project-card.no-progress .project-name{color:#bbb}
+.bar-wrap{display:flex;gap:1px;flex-shrink:0}
+.bar-seg{width:2px;height:6px;border-radius:1px;background:#e8e8e3}
+.bar-seg.filled{background:#555}
+.pct{font-family:'Share Tech Mono',monospace;font-size:10px;min-width:28px;text-align:right}
+.project-card.has-progress .pct{color:#888}
+.project-card.no-progress .pct{color:#ccc}
+.tab-bar{display:flex;justify-content:space-around;padding:12px 20px 14px;border-top:1px solid #eee;background:#fff}
+.tab{text-align:center;cursor:pointer}
+.tab-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;margin-top:3px}
+.tab.active .tab-lbl{color:#111}
+.tab.inactive .tab-lbl{color:#ccc}
+.tab.active svg{stroke:#111}
+.tab.inactive svg{stroke:#ccc}
+
+/* ─── Health Tracker — verbatim from reference ───────────────────────────────── */
+.big-heading{font-family:'Share Tech Mono',monospace;font-size:22px;line-height:1.15;color:#111;margin-bottom:20px;letter-spacing:0.02em}
+.prog-row{display:flex;justify-content:space-between;margin-bottom:5px}
+.prog-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;letter-spacing:0.08em}
+.dotted-bar{display:flex;gap:1px;width:100%;margin-bottom:7px}
+.dot-seg{height:6px;flex:1;background:#e0e0de;border-radius:1px}
+.dot-seg.filled{background:#111}
+.prog-meta{display:flex;justify-content:space-between;margin-bottom:20px}
+.prog-meta span{font-family:'Share Tech Mono',monospace;font-size:10px;color:#888}
+.prog-meta span b{color:#111;font-weight:normal}
+.day-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;letter-spacing:0.1em;margin-bottom:8px}
+.habit-card{border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;margin-bottom:10px}
+.habit-card.today-active{background:#111;border:1.5px solid #111;cursor:pointer}
+.habit-card.upcoming{background:#fff;border:1.5px solid #e8e8e6;cursor:default}
+.habit-card.locked-card{background:#fff;border:1.5px dashed #ccc;cursor:default}
+.icon-circle{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.today-active .icon-circle{border:1.5px solid #444}
+.upcoming .icon-circle{border:1.5px solid #ddd}
+.locked-card .icon-circle{border:1.5px solid #e0e0e0}
+.icon-circle svg{width:18px;height:18px;stroke-width:1.5;fill:none}
+.today-active .icon-circle svg{stroke:#aaa}
+.upcoming .icon-circle svg{stroke:#bbb}
+.locked-card .icon-circle svg{stroke:#d0d0d0}
+.card-mid{flex:1}
+.card-name{font-family:'Share Tech Mono',monospace;font-size:14px}
+.today-active .card-name{color:#f5f5f3}
+.upcoming .card-name{color:#555}
+.locked-card .card-name{color:#ccc}
+.card-cat{font-family:'Share Tech Mono',monospace;font-size:10px;margin-top:2px;letter-spacing:0.08em}
+.today-active .card-cat{color:#666}
+.upcoming .card-cat{color:#bbb}
+.locked-card .card-cat{color:#ddd}
+.card-when{font-family:'Share Tech Mono',monospace;font-size:9px;margin-top:3px}
+.today-active .card-when{color:#555}
+.upcoming .card-when{color:#ccc}
+.locked-card .card-when{color:#ddd}
+.card-right{display:flex;align-items:center;gap:10px}
+.streak-block{text-align:right}
+.streak-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:0.1em}
+.today-active .streak-lbl{color:#666}
+.upcoming .streak-lbl{color:#bbb}
+.locked-card .streak-lbl{color:#ddd}
+.streak-num{font-family:'Share Tech Mono',monospace;font-size:22px;line-height:1}
+.today-active .streak-num{color:#f5f5f3}
+.upcoming .streak-num{color:#bbb}
+.locked-card .streak-num{color:#ddd;font-size:16px}
+.check-circle{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.today-active .check-circle{border:1.5px solid #555;background:#333}
+.upcoming .check-circle{border:1.5px solid #ddd}
+.check-circle svg{width:14px;height:14px;fill:none;stroke-width:2}
+.today-active .check-circle svg{stroke:#f5f5f3}
+.upcoming .check-circle svg{stroke:#ddd}
+.section-label{font-family:'Share Tech Mono',monospace;font-size:10px;color:#888;letter-spacing:0.1em;margin:20px 0 10px}
+.grid-header{display:grid;grid-template-columns:64px repeat(7,1fr);gap:3px;margin-bottom:4px}
+.grid-day{font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa;text-align:center}
+.grid-day.today-col{color:#111}
+.grid-row{display:grid;grid-template-columns:64px repeat(7,1fr);gap:3px;margin-bottom:3px;align-items:center}
+.grid-act{font-family:'Share Tech Mono',monospace;font-size:9px;color:#888}
+.gc{height:24px;border-radius:4px;background:#e0e0de}
+.gc.done-cell{background:#111}
+.gc.rest{background:transparent;border:1px dashed #ddd}
+.gc.today-sched{outline:1.5px solid #111;outline-offset:1px;background:#e0e0de}
+.gc.future{background:#ebebeb}
+.gc.locked-cell{background:transparent;border:1px dashed #e0e0e0}
