@@ -1,259 +1,433 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Manager</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="manifest.json">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  <meta name="theme-color" content="#e8e8e8">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Michel App</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.topbar{flex-shrink:0;background:#fff;padding:20px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f0f0ee}
+.app-title{font-family:'Share Tech Mono',monospace;font-size:15px;color:#111;letter-spacing:0.02em}
+.topbar-actions{display:flex;gap:7px}
+.icon-btn{width:32px;height:32px;border-radius:9px;border:1px solid #e0e0e0;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.icon-btn svg{width:14px;height:14px;stroke:#555;fill:none;stroke-width:1.5}
+.icon-btn.plus-btn svg{width:16px;height:16px;stroke-width:2}
+.cat-strip{flex-shrink:0;display:flex;padding:0 18px;border-bottom:1px solid #eee;overflow-x:auto;scrollbar-width:none}
+.cat-strip::-webkit-scrollbar{display:none}
+.cat-t{font-family:'Share Tech Mono',monospace;font-size:11px;color:#aaa;padding:9px 11px;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;user-select:none}
+.cat-t.active{color:#111;border-bottom:2px solid #111}
+.scroll-area{flex:1;overflow-y:auto;background:#fff;scrollbar-width:none}
+.scroll-area::-webkit-scrollbar{display:none}
+.content{padding:16px 18px 24px}
+.tab-bar{flex-shrink:0;display:flex;justify-content:space-around;padding:10px 16px 14px;border-top:1px solid #eee;background:#fff}
+.tab{text-align:center;cursor:pointer;user-select:none}
+.tab-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;margin-top:3px}
+.tab.active .tab-lbl{color:#111}.tab.inactive .tab-lbl{color:#ccc}
+.tab.active svg{stroke:#111}.tab.inactive svg{stroke:#ccc}
+.tab-view{display:none;flex:1;flex-direction:column;overflow:hidden}
+.tab-view.active{display:flex}
+
+.inbox-overlay{display:none;position:fixed;bottom:56px;left:0;right:0;background:#fff;border-top:1px solid #eee;padding:14px 18px 18px;z-index:100}
+.inbox-overlay.open{display:block}
+.inbox-tag{font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa;letter-spacing:0.08em;margin-bottom:8px}
+.inbox-tag span{color:#111}
+.inbox-input{width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;color:#111;border:1.5px solid #e0e0de;border-radius:10px;padding:10px 12px;resize:none;height:72px;outline:none}
+.inbox-input::placeholder{color:#ccc}
+.inbox-actions{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.inbox-cancel{font-family:'Share Tech Mono',monospace;font-size:10px;color:#aaa;cursor:pointer}
+.inbox-send{font-family:'Share Tech Mono',monospace;font-size:10px;color:#fff;background:#111;border:none;border-radius:8px;padding:7px 16px;cursor:pointer}
+.inbox-msgs{margin-top:10px;max-height:80px;overflow-y:auto}
+.inbox-msg{font-family:'Share Tech Mono',monospace;font-size:9px;color:#555;padding:5px 0;border-bottom:1px solid #f5f5f3;display:flex;gap:6px}
+.inbox-msg:last-child{border-bottom:none}
+.inbox-msg-tag{color:#aaa;flex-shrink:0}
+
+.card{background:#fff;border-radius:14px;padding:13px 14px;margin-bottom:8px;overflow:hidden;user-select:none}
+.card.solid{border:1.5px solid #e0e0de}
+.card.dashed{border:1.5px dashed #ddd}
+.card.dark{background:#111;border:1.5px solid #111}
+.card.muted{border:1.5px solid #eee}
+.card-top{display:flex;align-items:center;gap:12px;cursor:pointer}
+.mid{flex:1;min-width:0}
+.ctitle{font-family:'Share Tech Mono',monospace;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.solid .ctitle{color:#111}.dashed .ctitle{color:#bbb}.dark .ctitle{color:#f5f5f3}.muted .ctitle{color:#888}
+.csub{font-family:'Share Tech Mono',monospace;font-size:9px;color:#bbb;margin-top:2px}
+.dark .csub{color:#555}.muted .csub{color:#ccc}
+.cbar{margin-top:7px;display:flex;gap:2px;overflow:hidden}
+.cs{width:4px;height:6px;border-radius:1px;background:#e8e8e3;flex-shrink:0}
+.cs.f{background:#555}.cs.o{background:#D85A30}
+.cright{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.bnum{font-family:'Share Tech Mono',monospace;font-size:18px;line-height:1;text-align:right;white-space:nowrap}
+.bnum.dkv{color:#f5f5f3}.bnum.muv{color:#bbb}.bnum.nrm{color:#111}.bnum.ovr{color:#D85A30}.bnum.fnt{color:#ccc}
+.nsub{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:0.06em;text-align:right;margin-top:1px}
+.nsub.lbl{color:#888}.nsub.dlbl{color:#555}.nsub.mlbl{color:#ccc}.nsub.olbl{color:#D85A30}
+.ck{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.dark .ck{border:1.5px solid #555;background:#333}.muted .ck{border:1.5px solid #ddd}
+.ck svg{width:11px;height:11px;fill:none;stroke-width:2}
+.dark .ck svg{stroke:#f5f5f3}.muted .ck svg{stroke:#ddd}
+.ck.ticked{border-color:#555!important;background:#333!important}
+.ck.ticked svg{stroke:#f5f5f3!important}
+.expand-body{border-top:1px solid #f0f0ee;margin-top:10px;padding-top:10px;display:none}
+.expand-body.open{display:block}
+.dark .expand-body{border-top-color:#333}
+.task-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f3;cursor:pointer}
+.task-item:last-child{border-bottom:none}
+.task-check{width:14px;height:14px;border-radius:3px;border:1px solid #ccc;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.task-check.done{background:#111;border-color:#111}
+.task-check svg{width:8px;height:8px;stroke:#fff;fill:none;stroke-width:2.5;display:none}
+.task-check.done svg{display:block}
+.task-text{font-family:'Share Tech Mono',monospace;font-size:9px;color:#555;flex:1}
+.task-text.done-txt{color:#ccc;text-decoration:line-through}
+.habit-note{font-family:'Share Tech Mono',monospace;font-size:9px;color:#777;line-height:1.6;margin-bottom:10px}
+.dark .habit-note{color:#666}
+.yt-link{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f5f5f3;border-radius:8px;text-decoration:none}
+.dark .yt-link{background:#1a1a1a}
+.yt-icon{width:24px;height:24px;border-radius:5px;background:#e0e0de;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dark .yt-icon{background:#333}
+.yt-icon svg{width:12px;height:12px;fill:#888}
+.dark .yt-icon svg{fill:#555}
+.yt-text{font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dark .yt-text{color:#555}
+.yt-arrow{font-family:'Share Tech Mono',monospace;font-size:10px;color:#bbb}
+.drill-tabs{display:flex;background:#f5f5f3;border-radius:7px;padding:2px;gap:2px;margin-bottom:8px}
+.drill-tab{flex:1;font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa;padding:5px 4px;text-align:center;border-radius:5px;cursor:pointer}
+.drill-tab.active{background:#111;color:#fff}
+.tx-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f8f8f6}
+.tx-row:last-child{border-bottom:none}
+.tx-dot{width:6px;height:6px;border-radius:50%;background:#ddd;flex-shrink:0}
+.tx-name{font-family:'Share Tech Mono',monospace;font-size:9px;color:#111;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-sub{font-family:'Share Tech Mono',monospace;font-size:8px;color:#ccc}
+.tx-amt{font-family:'Share Tech Mono',monospace;font-size:9px;color:#111;white-space:nowrap}
+.prog-row{display:flex;justify-content:space-between;margin-bottom:5px}
+.prog-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;letter-spacing:0.06em}
+.weekly-bar{display:flex;gap:2px;margin-bottom:6px;overflow:hidden}
+.wb-s{width:4px;height:6px;border-radius:1px;background:#e0e0de;flex-shrink:0}
+.wb-s.fl{background:#111}
+.prog-meta{display:flex;justify-content:space-between;margin-bottom:16px}
+.prog-meta span{font-family:'Share Tech Mono',monospace;font-size:10px;color:#888}
+.prog-meta span b{color:#111;font-weight:normal}
+.day-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;letter-spacing:0.1em;margin-bottom:8px}
+.sec-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa;letter-spacing:0.1em;margin:14px 0 8px}
+.grid-hdr{display:grid;grid-template-columns:56px repeat(7,1fr);gap:3px;margin-bottom:3px}
+.grid-d{font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa;text-align:center}
+.grid-d.tc{color:#111}
+.grid-rw{display:grid;grid-template-columns:56px repeat(7,1fr);gap:3px;margin-bottom:3px;align-items:center}
+.grid-act{font-family:'Share Tech Mono',monospace;font-size:9px;color:#888}
+.gc{height:22px;border-radius:4px;background:#e0e0de}
+.gc.dn{background:#111}.gc.rs{background:transparent;border:1px dashed #ddd}
+.gc.ts{outline:1.5px solid #111;outline-offset:1px;background:#e0e0de}
+.gc.fu{background:#ebebeb}.gc.lc{background:transparent;border:1px dashed #e0e0e0}
+.month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.month-lbl{font-family:'Share Tech Mono',monospace;font-size:13px;color:#111;letter-spacing:0.05em}
+.nav-btn{width:26px;height:26px;border-radius:7px;border:1px solid #eee;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.nav-btn svg{width:10px;height:10px;stroke:#888;fill:none;stroke-width:2}
+.ov-card{background:#fff;border:1.5px solid #e0e0de;border-radius:14px;padding:12px 14px;margin-bottom:12px;overflow:hidden}
+.ov-row{display:flex;justify-content:space-between;margin-bottom:10px}
+.ov-lbl{font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;letter-spacing:0.06em;margin-bottom:2px}
+.ov-val{font-family:'Share Tech Mono',monospace;font-size:15px;color:#111}
+.ov-val.pos{color:#1D9E75}
+.ov-bar{display:flex;gap:2px;overflow:hidden}
+.ov-s{width:4px;height:6px;border-radius:1px;flex-shrink:0}
+.ov-s.f{background:#555}.ov-s.e{background:#e8e8e3}
+.seg-tabs-main{display:flex;background:#f5f5f3;border-radius:9px;padding:3px;gap:2px;margin-bottom:12px}
+.seg-btn{flex:1;font-family:'Share Tech Mono',monospace;font-size:10px;color:#aaa;padding:6px 2px;text-align:center;border-radius:7px;cursor:pointer}
+.seg-btn.active{background:#111;color:#fff}
+.fin-view{display:none}.fin-view.active{display:block}
+.grocery-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 24px;text-align:center}
+.grocery-icon{width:48px;height:48px;border-radius:50%;border:1.5px dashed #ddd;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.grocery-icon svg{width:22px;height:22px;stroke:#ccc;fill:none;stroke-width:1.5}
+.grocery-msg{font-family:'Share Tech Mono',monospace;font-size:11px;color:#bbb;line-height:1.7}
+.grocery-sub{font-family:'Share Tech Mono',monospace;font-size:9px;color:#ddd;margin-top:8px}
+</style>
 </head>
 <body>
 
-  <div class="phone">
-    <div class="screen">
-
-      <div class="topbar">
-        <span class="app-title">TASK MANAGER</span>
-        <div class="topbar-actions">
-          <div class="icon-btn" id="btn-quick-capture" title="Quick capture">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-          </div>
-          <div class="icon-btn" id="btn-reload" title="Reload">
-            <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 018-8 8 8 0 016.9 4"/><polyline points="16 4 21 4 21 9"/><path d="M20 12a8 8 0 01-8 8 8 8 0 01-6.9-4"/><polyline points="8 20 3 20 3 15"/></svg>
-          </div>
-        </div>
-      </div>
-
-      <div class="category-strip" id="tab-nav"></div>
-
-      <div class="content">
-        <div class="new-project" id="btn-new-project">
-          <svg viewBox="0 0 12 12"><line x1="6" y1="2" x2="6" y2="10"/><line x1="2" y1="6" x2="10" y2="6"/></svg>
-          New Project
-        </div>
-        <div id="projects">
-          <div class="loading">Loading...</div>
-        </div>
-      </div>
-
-      <div class="tab-bar">
-        <div class="tab active bottom-tab-btn" data-app-tab="tasks">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-          <div class="tab-lbl">TASKS</div>
-        </div>
-        <div class="tab inactive bottom-tab-btn" data-app-tab="health" onclick="location.href='health.html'">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M20 12c0 4.4-3.6 8-8 8s-8-3.6-8-8 3.6-8 8-8"/><path d="M12 8v4l3 3"/><path d="M18 2v4M20 4h-4"/></svg>
-          <div class="tab-lbl">HEALTH</div>
-        </div>
-        <div class="tab inactive bottom-tab-btn" data-app-tab="finance">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4M14 15h4"/></svg>
-          <div class="tab-lbl">FINANCE</div>
-        </div>
-        <div class="tab inactive bottom-tab-btn" data-app-tab="grocery">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
-          <div class="tab-lbl">GROCERY</div>
-        </div>
-      </div>
-
-    </div>
+<!-- TOPBAR (swapped by tab) -->
+<div class="topbar" id="topbar">
+  <span class="app-title" id="topbar-title">TASK MANAGER</span>
+  <div class="topbar-actions">
+    <div class="icon-btn plus-btn" id="btn-plus" onclick="handlePlus()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+    <div class="icon-btn" onclick="toggleInbox()"><svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
   </div>
+</div>
 
-  <!-- Modal: Quick Capture -->
-  <div id="modal-capture" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop"></div>
-    <div class="modal-box">
-      <h2>Quick Capture</h2>
-      <input type="text" id="capture-name" placeholder="What's on your mind?" autocomplete="off">
-      <textarea id="capture-notes" placeholder="Notes (optional)" rows="3"></textarea>
-      <div class="modal-actions">
-        <button class="btn btn-ghost modal-cancel" data-modal="modal-capture">Cancel</button>
-        <button id="capture-save" class="btn btn-primary">Save to Inbox</button>
-      </div>
-    </div>
+<!-- TAB: TASKS -->
+<div class="tab-view active" id="view-tasks">
+  <div class="cat-strip" id="cat-strip">
+    <div class="cat-t active" onclick="selectCat(this,'Household')">Household</div>
+    <div class="cat-t" onclick="selectCat(this,'Side Hustle')">Side Hustle</div>
+    <div class="cat-t" onclick="selectCat(this,'Social')">Social</div>
+    <div class="cat-t" onclick="selectCat(this,'Health')">Health</div>
+    <div class="cat-t" onclick="selectCat(this,'Inbox')">Inbox</div>
+    <div class="cat-t" onclick="selectCat(this,'Urgent')">Urgent</div>
   </div>
+  <div class="scroll-area"><div class="content"><div id="task-list"></div></div></div>
+</div>
 
-  <!-- Modal: Add / Edit Status -->
-  <div id="modal-status" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop"></div>
-    <div class="modal-box modal-small">
-      <h2>Update Status</h2>
-      <select id="status-value">
-        <option value="Inbox">Inbox</option>
-        <option value="To Do">To Do</option>
-        <option value="In Progress">In Progress</option>
-        <option value="Blocked">Blocked</option>
-        <option value="Done">Done</option>
-      </select>
-      <div class="modal-actions">
-        <button class="btn btn-ghost modal-cancel" data-modal="modal-status">Cancel</button>
-        <button id="status-save" class="btn btn-primary">Save</button>
+<!-- TAB: HABITS -->
+<div class="tab-view" id="view-habits">
+  <div class="scroll-area"><div class="content">
+    <div class="prog-row"><span class="prog-label">WEEKLY PROGRESS</span><span class="prog-label" id="h-pct-lbl">40%</span></div>
+    <div class="weekly-bar" id="h-bar"></div>
+    <div class="prog-meta"><span id="h-done-lbl"><b>02</b> COMPLETED</span><span id="h-rem-lbl"><b>03</b> REMAINING</span></div>
+    <div class="day-lbl">TODAY — WEDNESDAY</div>
+    <div id="habit-list"></div>
+    <div class="sec-lbl">CONSISTENCY GRID</div>
+    <div class="grid-hdr"><div class="grid-d"></div><div class="grid-d">S</div><div class="grid-d">M</div><div class="grid-d">T</div><div class="grid-d tc">W</div><div class="grid-d">T</div><div class="grid-d">F</div><div class="grid-d">S</div></div>
+    <div class="grid-rw"><div class="grid-act">stretch</div><div class="gc rs"></div><div class="gc dn"></div><div class="gc rs"></div><div class="gc ts"></div><div class="gc rs"></div><div class="gc rs"></div><div class="gc fu"></div></div>
+    <div class="grid-rw"><div class="grid-act">kettle</div><div class="gc rs"></div><div class="gc rs"></div><div class="gc dn"></div><div class="gc rs"></div><div class="gc fu"></div><div class="gc rs"></div><div class="gc rs"></div></div>
+    <div class="grid-rw"><div class="grid-act">running</div><div class="gc lc"></div><div class="gc lc"></div><div class="gc lc"></div><div class="gc lc"></div><div class="gc lc"></div><div class="gc lc"></div><div class="gc lc"></div></div>
+  </div></div>
+</div>
+
+<!-- TAB: FINANCE -->
+<div class="tab-view" id="view-finance">
+  <div class="scroll-area"><div class="content">
+    <div class="month-nav"><div class="nav-btn"><svg viewBox="0 0 12 12"><polyline points="8,2 4,6 8,10"/></svg></div><span class="month-lbl">MARCH 2026</span><div class="nav-btn"><svg viewBox="0 0 12 12"><polyline points="4,2 8,6 4,10"/></svg></div></div>
+    <div class="ov-card">
+      <div class="ov-row">
+        <div><div class="ov-lbl">DEPOSITS</div><div class="ov-val pos">8,881€</div></div>
+        <div style="text-align:center"><div class="ov-lbl">EXPENSES</div><div class="ov-val">8,037€</div></div>
+        <div style="text-align:right"><div class="ov-lbl">BALANCE</div><div class="ov-val pos">844€</div></div>
       </div>
+      <div class="ov-bar" id="fin-bar"></div>
     </div>
-  </div>
-
-  <!-- Modal: Edit Notes -->
-  <div id="modal-notes" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop"></div>
-    <div class="modal-box">
-      <h2>Notes</h2>
-      <textarea id="notes-value" rows="6" placeholder="Add notes..."></textarea>
-      <div class="modal-actions">
-        <button class="btn btn-ghost modal-cancel" data-modal="modal-notes">Cancel</button>
-        <button id="notes-save" class="btn btn-primary">Save</button>
-      </div>
+    <div class="seg-tabs-main">
+      <div class="seg-btn active" onclick="switchFinTab('exp',this)">EXPENSES</div>
+      <div class="seg-btn" onclick="switchFinTab('dep',this)">DEPOSITS</div>
+      <div class="seg-btn" onclick="switchFinTab('tx',this)">TRANSACTIONS</div>
     </div>
-  </div>
+    <div id="fin-exp" class="fin-view active"></div>
+    <div id="fin-dep" class="fin-view"></div>
+    <div id="fin-tx" class="fin-view"></div>
+  </div></div>
+</div>
 
-  <!-- Modal: Add Project -->
-  <div id="modal-project" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop"></div>
-    <div class="modal-box">
-      <h2>New Project</h2>
-      <input type="text" id="project-name" placeholder="Project name" autocomplete="off">
-      <div class="form-row">
-        <select id="project-status">
-          <option value="To Do">To Do</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Blocked">Blocked</option>
-        </select>
-        <select id="project-priority">
-          <option value="Medium">Medium</option>
-          <option value="Low">Low</option>
-          <option value="High">High</option>
-          <option value="Urgent">Urgent</option>
-        </select>
-      </div>
-      <textarea id="project-notes" placeholder="Notes (optional)" rows="3"></textarea>
-      <div class="modal-actions">
-        <button class="btn btn-ghost modal-cancel" data-modal="modal-project">Cancel</button>
-        <button id="project-save" class="btn btn-primary">Create Project</button>
-      </div>
-    </div>
+<!-- TAB: GROCERY -->
+<div class="tab-view" id="view-grocery">
+  <div class="grocery-placeholder">
+    <div class="grocery-icon"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></div>
+    <div class="grocery-msg">I am cooking,<br>I will be there soon</div>
+    <div class="grocery-sub">Weekly menu coming up</div>
   </div>
+</div>
 
-  <!-- Modal: Add Task -->
-  <div id="modal-task" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop"></div>
-    <div class="modal-box">
-      <h2>New Task</h2>
-      <div class="modal-context" id="task-context-label"></div>
-      <input type="text" id="task-name" placeholder="Task name" autocomplete="off">
-      <select id="task-status">
-        <option value="To Do">To Do</option>
-        <option value="In Progress">In Progress</option>
-        <option value="Blocked">Blocked</option>
-      </select>
-      <input type="date" id="task-execution-date" placeholder="Execution date (optional)">
-      <textarea id="task-notes" placeholder="Notes (optional)" rows="3"></textarea>
-      <div class="modal-actions">
-        <button class="btn btn-ghost modal-cancel" data-modal="modal-task">Cancel</button>
-        <button id="task-save" class="btn btn-primary">Add Task</button>
-      </div>
-    </div>
+<!-- INBOX OVERLAY -->
+<div class="inbox-overlay" id="inbox-overlay">
+  <div class="inbox-tag">INBOX · <span id="inbox-tab-label">TASKS</span></div>
+  <textarea class="inbox-input" id="inbox-input" placeholder="Drop a quick note..."></textarea>
+  <div class="inbox-actions">
+    <span class="inbox-cancel" onclick="toggleInbox()">Cancel</span>
+    <button class="inbox-send" onclick="sendInbox()">Send</button>
   </div>
+  <div class="inbox-msgs" id="inbox-msgs"></div>
+</div>
 
-  <!-- Modal: Task Detail -->
-  <div id="modal-task-detail" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop"></div>
-    <div class="modal-box modal-detail">
-      <h2>Task Detail</h2>
-      <div class="detail-grid">
-        <div class="detail-field detail-full">
-          <label>Name</label>
-          <input type="text" id="detail-name" autocomplete="off">
-        </div>
-        <div class="detail-field">
-          <label>Status</label>
-          <select id="detail-status">
-            <option value="Inbox">Inbox</option>
-            <option value="To Do">To Do</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Blocked">Blocked</option>
-            <option value="Done">Done</option>
-          </select>
-        </div>
-        <div class="detail-field">
-          <label>Priority</label>
-          <select id="detail-priority">
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
-            <option value="Urgent">Urgent</option>
-          </select>
-        </div>
-        <div class="detail-field">
-          <label>Due Date</label>
-          <input type="date" id="detail-due-date">
-        </div>
-        <div class="detail-field">
-          <label>Execution Date</label>
-          <input type="date" id="detail-execution-date">
-        </div>
-        <div class="detail-field">
-          <label>Execution Time</label>
-          <div class="tc-wrap" id="tc-exec-time">
-            <div class="tc-unit">
-              <button type="button" class="tc-btn" data-tc="exec-time" data-part="h" data-dir="1">▲</button>
-              <span class="tc-val" id="tc-exec-time-h">--</span>
-              <button type="button" class="tc-btn" data-tc="exec-time" data-part="h" data-dir="-1">▼</button>
-            </div>
-            <span class="tc-colon">:</span>
-            <div class="tc-unit">
-              <button type="button" class="tc-btn" data-tc="exec-time" data-part="m" data-dir="1">▲</button>
-              <span class="tc-val" id="tc-exec-time-m">--</span>
-              <button type="button" class="tc-btn" data-tc="exec-time" data-part="m" data-dir="-1">▼</button>
-            </div>
-            <button type="button" class="tc-clear-btn" data-tc="exec-time">&#x2715;</button>
-          </div>
-          <input type="hidden" id="detail-execution-time">
-        </div>
-        <div class="detail-field">
-          <label>Estimated Duration</label>
-          <div class="tc-wrap" id="tc-duration">
-            <div class="tc-unit">
-              <button type="button" class="tc-btn" data-tc="duration" data-part="h" data-dir="1">▲</button>
-              <span class="tc-val" id="tc-duration-h">0</span>
-              <button type="button" class="tc-btn" data-tc="duration" data-part="h" data-dir="-1">▼</button>
-              <span class="tc-unit-lbl">h</span>
-            </div>
-            <div class="tc-unit">
-              <button type="button" class="tc-btn" data-tc="duration" data-part="m" data-dir="1">▲</button>
-              <span class="tc-val" id="tc-duration-m">00</span>
-              <button type="button" class="tc-btn" data-tc="duration" data-part="m" data-dir="-1">▼</button>
-              <span class="tc-unit-lbl">m</span>
-            </div>
-            <button type="button" class="tc-clear-btn" data-tc="duration">&#x2715;</button>
-          </div>
-          <input type="hidden" id="detail-duration">
-        </div>
-        <div class="detail-field detail-full">
-          <label>External Link</label>
-          <input type="url" id="detail-external-link" placeholder="https://...">
-        </div>
-        <div class="detail-field detail-full">
-          <label>Notes</label>
-          <textarea id="detail-notes" rows="5" placeholder="Add notes..."></textarea>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-ghost modal-cancel" data-modal="modal-task-detail">Cancel</button>
-        <button id="detail-save" class="btn btn-primary">Save</button>
-      </div>
-    </div>
-  </div>
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab('tasks',this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><div class="tab-lbl">TASKS</div></div>
+  <div class="tab inactive" onclick="switchTab('habits',this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M20 12c0 4.4-3.6 8-8 8s-8-3.6-8-8 3.6-8 8-8"/><path d="M12 8v4l3 3"/><path d="M18 2v4M20 4h-4"/></svg><div class="tab-lbl">HABITS</div></div>
+  <div class="tab inactive" onclick="switchTab('finance',this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><div class="tab-lbl">FINANCE</div></div>
+  <div class="tab inactive" onclick="switchTab('grocery',this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg><div class="tab-lbl">GROCERY</div></div>
+</div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-  <script src="app.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js');
-    }
-  </script>
+<script>
+/* ── STATE ── */
+var currentTab='tasks';
+var tabTitles={tasks:'TASK MANAGER',habits:'HABITS',finance:'FINANCE',grocery:'WEEKLY MENU'};
+var inboxMessages={tasks:[],habits:[],finance:[],grocery:[]};
+
+/* ── TAB SWITCHING ── */
+function switchTab(tab,el){
+  document.querySelectorAll('.tab-view').forEach(function(v){v.classList.remove('active');});
+  document.getElementById('view-'+tab).classList.add('active');
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');t.classList.add('inactive');});
+  el.classList.remove('inactive');el.classList.add('active');
+  currentTab=tab;
+  document.getElementById('topbar-title').textContent=tabTitles[tab];
+  document.getElementById('cat-strip').style.display=tab==='tasks'?'flex':'none';
+  var io=document.getElementById('inbox-overlay');
+  if(io.classList.contains('open'))io.classList.remove('open');
+}
+
+function selectCat(el){
+  document.querySelectorAll('.cat-t').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');
+}
+
+function handlePlus(){
+  var actions={tasks:'New project',habits:'New habit',finance:'Add transaction',grocery:'Add meal'};
+  alert(actions[currentTab]);
+}
+
+/* ── INBOX ── */
+function toggleInbox(){
+  var el=document.getElementById('inbox-overlay');
+  el.classList.toggle('open');
+  document.getElementById('inbox-tab-label').textContent=currentTab.toUpperCase();
+  renderInboxMsgs();
+}
+function sendInbox(){
+  var inp=document.getElementById('inbox-input');
+  var msg=inp.value.trim();if(!msg)return;
+  inboxMessages[currentTab].unshift({tab:currentTab,text:msg,ts:new Date().toLocaleTimeString()});
+  inp.value='';renderInboxMsgs();
+}
+function renderInboxMsgs(){
+  var el=document.getElementById('inbox-msgs');
+  var msgs=inboxMessages[currentTab];
+  el.innerHTML=msgs.map(function(m){return '<div class="inbox-msg"><span class="inbox-msg-tag">'+m.tab.toUpperCase()+'</span><span>'+m.text+'</span></div>';}).join('');
+}
+
+/* ── BAR HELPERS ── */
+function segsForEl(el){return Math.max(8,Math.floor((el.offsetWidth+2)/6));}
+function mkBar(pct,N){var o=pct>100,f=Math.round(Math.min(pct,100)/100*N),h='';for(var i=0;i<N;i++)h+='<div class="cs'+(o?' o':i<f?' f':'')+'"></div>';return h;}
+
+/* ── TASKS ── */
+var projects=[
+  {name:'Meterkast | storage and fix',cat:'Household',tasks:[{t:'Assess cable situation',d:false},{t:'Order enclosure',d:false}]},
+  {name:'Office | drawers',cat:'Household',tasks:[{t:'Empty existing drawers',d:false},{t:'Install new runners',d:false}]},
+  {name:'Office | top shelves',cat:'Household',tasks:[{t:'Measure brackets',d:false},{t:'Order wood planks',d:false}]},
+  {name:'Bedroom | lucas',cat:'Household',tasks:[{t:'Measure wall dimensions',d:true},{t:'Order wardrobe from IKEA',d:true},{t:'Paint walls before assembly',d:false},{t:'Assemble wardrobe',d:false},{t:'Install lighting strip',d:false}]},
+  {name:'Allinq | apollo',cat:'Side Hustle',tasks:[{t:'Submit proposal',d:true},{t:'Schedule kick-off',d:true},{t:'Deliver phase 1',d:false}]},
+  {name:'Car | corsa',cat:'Household',tasks:[{t:'Book service appointment',d:true},{t:'Replace wiper blades',d:false}]},
+  {name:'Around the house | 3D prints',cat:'Household',tasks:[{t:'Design bracket model',d:false},{t:'Slice and print',d:false}]},
+  {name:'Baptism | lucas',cat:'Social',tasks:[{t:'Book venue',d:true},{t:'Send invites',d:true},{t:'Order cake',d:false}]},
+];
+function projPct(p){return p.tasks.length?Math.round(p.tasks.filter(function(t){return t.d}).length/p.tasks.length*100):0;}
+
+function renderTasks(){
+  var el=document.getElementById('task-list');el.innerHTML='';
+  projects.forEach(function(p,pi){
+    var pct=projPct(p),cls=pct===0?'dashed':'solid',nc=pct===0?'fnt':'nrm',id='p'+pi;
+    var cardEl=document.createElement('div');cardEl.className='card '+cls;cardEl.id=id;
+    var tasks='';p.tasks.forEach(function(t,ti){tasks+='<div class="task-item" onclick="toggleTask('+pi+','+ti+')"><div class="task-check'+(t.d?' done':'')+'" id="tc'+pi+'_'+ti+'"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2"/></svg></div><span class="task-text'+(t.d?' done-txt':'')+'" id="tt'+pi+'_'+ti+'">'+t.t+'</span></div>';});
+    cardEl.innerHTML='<div class="card-top" onclick="toggleCard(\''+id+'\')"><div class="mid"><div class="ctitle">'+p.name+'</div><div class="cbar" id="cb'+pi+'"></div></div><div class="cright"><div><div class="bnum '+nc+'" id="pn'+pi+'">'+pct+'%</div></div></div></div><div class="expand-body" id="eb'+pi+'">'+tasks+'</div>';
+    el.appendChild(cardEl);
+  });
+  setTimeout(function(){projects.forEach(function(p,pi){var el=document.getElementById('cb'+pi);var N=segsForEl(el);el._n=N;el.innerHTML=mkBar(projPct(p),N);});},50);
+}
+function toggleCard(id){document.getElementById('eb'+id.replace('p','')).classList.toggle('open');}
+function toggleTask(pi,ti){
+  projects[pi].tasks[ti].d=!projects[pi].tasks[ti].d;
+  var pct=projPct(projects[pi]),cls=pct===0?'dashed':'solid',nc=pct===0?'fnt':'nrm';
+  document.getElementById('p'+pi).className='card '+cls;
+  var el=document.getElementById('cb'+pi),N=el._n||20;el.innerHTML=mkBar(pct,N);
+  document.getElementById('pn'+pi).className='bnum '+nc;
+  document.getElementById('pn'+pi).textContent=pct+'%';
+  document.getElementById('tc'+pi+'_'+ti).classList.toggle('done',projects[pi].tasks[ti].d);
+  document.getElementById('tt'+pi+'_'+ti).classList.toggle('done-txt',projects[pi].tasks[ti].d);
+}
+
+/* ── HABITS ── */
+var habits=[
+  {name:'Stretching',sub:'MOBILITY · MON WED SAT',streak:9,done:true,today:true,note:"Today's focus: upper back mobility. Hold each stretch for 30s, 3 rounds.",yt:'https://www.youtube.com/watch?v=2eA2Koq6pTI&t=541s'},
+  {name:'Kettlebell',sub:'STRENGTH · THU',streak:3,done:false,today:false,note:'Full body circuit: swings, cleans, press. 4 rounds of 8 reps.',yt:''},
+  {name:'Running',sub:'CARDIO',streak:0,done:false,today:false,locked:true},
+];
+function renderHabits(){
+  var el=document.getElementById('habit-list');el.innerHTML='';
+  var comingShown=false;
+  habits.forEach(function(h,hi){
+    if(h.locked){el.innerHTML+='<div class="card dashed"><div class="card-top"><div class="mid"><div class="ctitle">'+h.name+'</div><div class="csub">'+h.sub+'</div></div><div class="cright"><div><div class="nsub mlbl">UNLOCK AT</div><div class="bnum fnt">15</div></div></div></div></div>';return;}
+    if(!h.today&&!comingShown){comingShown=true;el.innerHTML+='<div class="day-lbl" style="margin-top:10px">COMING UP</div>';}
+    var cardCls=h.today?'dark':'muted',numCls=h.today?'dkv':'muv',subCls=h.today?'dlbl':'mlbl';
+    var ckHtml=h.today?'<div class="ck'+(h.done?' ticked':'')+'" id="hck'+hi+'" onclick="event.stopPropagation();tickHabit('+hi+')"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></div>':'';
+    var exp='<div class="expand-body" id="heb'+hi+'"><div class="habit-note">'+h.note+'</div>'+(h.yt?'<a class="yt-link" href="'+h.yt+'" target="_blank"><div class="yt-icon"><svg viewBox="0 0 24 24"><path d="M10 8l6 4-6 4V8z"/></svg></div><span class="yt-text">Watch session on YouTube</span><span class="yt-arrow">↗</span></a>':'')+'</div>';
+    el.innerHTML+='<div class="card '+cardCls+'" id="h'+hi+'"><div class="card-top" onclick="document.getElementById(\'heb'+hi+'\').classList.toggle(\'open\')"><div class="mid"><div class="ctitle">'+h.name+'</div><div class="csub">'+h.sub+'</div></div><div class="cright"><div><div class="nsub '+subCls+'">STREAK</div><div class="bnum '+numCls+'">'+String(h.streak).padStart(2,'0')+'</div></div>'+ckHtml+'</div></div>'+exp+'</div>';
+  });
+}
+function tickHabit(hi){habits[hi].done=!habits[hi].done;var ck=document.getElementById('hck'+hi);if(ck)ck.classList.toggle('ticked',habits[hi].done);updateHabitProgress();}
+function updateHabitProgress(){
+  var done=habits.filter(function(h){return h.today&&h.done}).length,total=5,pct=Math.round(done/total*100);
+  var hEl=document.getElementById('h-bar'),N=hEl._n||30,f=Math.round(pct/100*N),h='';
+  for(var i=0;i<N;i++)h+='<div class="wb-s'+(i<f?' fl':'')+'"></div>';
+  hEl.innerHTML=h;
+  document.getElementById('h-pct-lbl').textContent=pct+'%';
+  document.getElementById('h-done-lbl').innerHTML='<b>0'+done+'</b> COMPLETED';
+  document.getElementById('h-rem-lbl').innerHTML='<b>0'+(total-done)+'</b> REMAINING';
+}
+
+/* ── FINANCE ── */
+var expenses=[
+  {name:'Mortgage',tracked:2422,pct:100,txOnly:true,txs:[{m:'',d:'02 Mar',a:2422}]},
+  {name:'Daycare',tracked:3472,pct:100,txOnly:true,txs:[{m:'',d:'23 Mar',a:3472}]},
+  {name:'Daily living',tracked:551,pct:69,txOnly:false,txs:[{m:'Lidl',d:'19 Mar',a:119},{m:'Jumbo',d:'18 Mar',a:32},{m:'Jumbo',d:'13 Mar',a:42},{m:'Albert Heijn',d:'09 Mar',a:66},{m:'Lidl',d:'02 Mar',a:117}]},
+  {name:'Utilities',tracked:278,pct:78,txOnly:false,txs:[{m:'Essent',d:'02 Mar',a:250},{m:'Odido',d:'20 Mar',a:28}]},
+  {name:'Eating out',tracked:107,pct:143,txOnly:false,txs:[{m:'Snack bar',d:'02 Mar',a:48},{m:'Grillpaleis',d:'06 Mar',a:13},{m:'Doner',d:'20 Mar',a:31},{m:'Boerderij',d:'20 Mar',a:12}]},
+  {name:'Shopping',tracked:39,pct:26,txOnly:false,txs:[{m:'Amazon prime',d:'10 Mar',a:5},{m:'Others',d:'10 Mar',a:34}]},
+];
+var deposits=[
+  {name:'Contribution Ana',tracked:2550,pct:96,txs:[{m:'',d:'23 Mar',a:2550}]},
+  {name:'Contribution Bastien',tracked:2820,pct:101,txs:[{m:'',d:'23 Mar',a:2800},{m:'',d:'12 Mar',a:20}]},
+  {name:'Mortgage Deduction',tracked:720,pct:99,txs:[{m:'',d:'16 Mar',a:450},{m:'',d:'18 Mar',a:270}]},
+  {name:'Daycare Deduction',tracked:2560,pct:100,txs:[{m:'',d:'20 Mar',a:2560}]},
+];
+var allTx=[
+  {n:'Contribution Ana',c:'DEPOSITS',a:2550,pos:true,d:'23 Mar'},
+  {n:'Daycare',c:'DAYCARE',a:3472,pos:false,d:'23 Mar'},
+  {n:'Contrib. Bastien',c:'DEPOSITS',a:2800,pos:true,d:'23 Mar'},
+  {n:'Doner',c:'EATING OUT',a:31,pos:false,d:'20 Mar'},
+  {n:'Lidl',c:'DAILY LIVING',a:119,pos:false,d:'19 Mar'},
+  {n:'Jumbo',c:'DAILY LIVING',a:32,pos:false,d:'18 Mar'},
+  {n:'Amazon prime',c:'SHOPPING',a:5,pos:false,d:'10 Mar'},
+];
+function mkFinCard(d,i,isDep){
+  var over=d.pct>100&&!isDep,nc=over?'ovr':'nrm',pc=over?'olbl':'lbl';
+  var id='fc'+(isDep?'d':'')+i,hasTabs=!d.txOnly&&!isDep;
+  var txH='';d.txs.forEach(function(t){txH+='<div class="tx-row"><div class="tx-dot"></div><div style="flex:1;min-width:0"><div class="tx-name">'+(t.m||d.name)+'</div><div class="tx-sub">'+t.d+'</div></div><div class="tx-amt">'+t.a+'€</div></div>';});
+  var comH='';
+  if(hasTabs){var map={};d.txs.forEach(function(t){var k=t.m||'Other';if(!map[k]){map[k]={total:0,count:0}}map[k].total+=t.a;map[k].count++;});Object.keys(map).sort(function(a,b){return map[b].total-map[a].total}).forEach(function(k){comH+='<div class="tx-row"><div class="tx-dot"></div><div style="flex:1;min-width:0"><div class="tx-name">'+k+'</div><div class="tx-sub">'+map[k].count+' tx</div></div><div class="tx-amt">'+map[k].total+'€</div></div>';});}
+  var exp='<div class="expand-body" id="'+id+'_eb">'+(hasTabs?'<div class="drill-tabs"><div class="drill-tab active" id="'+id+'_tt" onclick="swD(\''+id+'\',\'tx\')">TRANSACTIONS</div><div class="drill-tab" id="'+id+'_tc" onclick="swD(\''+id+'\',\'com\')">COMMERCE</div></div>':'')+'<div id="'+id+'_tx">'+txH+'</div>'+(hasTabs?'<div id="'+id+'_com" style="display:none">'+comH+'</div>':'')+'</div>';
+  return '<div class="card solid" id="'+id+'"><div class="card-top" onclick="toggleFin(\''+id+'\')"><div class="mid"><div class="ctitle">'+d.name+'</div><div class="cbar" id="'+id+'_bar"></div></div><div class="cright"><div style="text-align:right"><div class="bnum '+nc+'">'+d.tracked+'€</div><div class="nsub '+pc+'">'+d.pct+'%</div></div></div></div>'+exp+'</div>';
+}
+function renderFin(){
+  var eH='';expenses.forEach(function(d,i){eH+=mkFinCard(d,i,false);});document.getElementById('fin-exp').innerHTML=eH;
+  var dH='';deposits.forEach(function(d,i){dH+=mkFinCard(d,i,true);});document.getElementById('fin-dep').innerHTML=dH;
+  var tH='';allTx.forEach(function(t){tH+='<div class="tx-row"><div class="tx-dot" style="background:'+(t.pos?'#1D9E75':'#ddd')+'"></div><div style="flex:1;min-width:0"><div class="tx-name">'+t.n+'</div><div class="tx-sub">'+t.c+'</div></div><div class="tx-amt">'+(t.pos?'':'-')+t.a+'€ · '+t.d+'</div></div>';});
+  document.getElementById('fin-tx').innerHTML=tH;
+  setTimeout(function(){
+    expenses.forEach(function(d,i){var el=document.getElementById('fc'+i+'_bar');var N=segsForEl(el);el._n=N;el.innerHTML=mkBar(d.pct,N);});
+    deposits.forEach(function(d,i){var el=document.getElementById('fcd'+i+'_bar');var N=segsForEl(el);el._n=N;el.innerHTML=mkBar(d.pct,N);});
+  },50);
+}
+function toggleFin(id){document.getElementById(id+'_eb').classList.toggle('open');}
+function swD(id,tab){
+  document.getElementById(id+'_tx').style.display=tab==='tx'?'block':'none';
+  var c=document.getElementById(id+'_com');if(c)c.style.display=tab==='com'?'block':'none';
+  document.getElementById(id+'_tt').classList.toggle('active',tab==='tx');
+  var tc=document.getElementById(id+'_tc');if(tc)tc.classList.toggle('active',tab==='com');
+}
+function switchFinTab(tab,btn){
+  document.querySelectorAll('.fin-view').forEach(function(v){v.classList.remove('active');});
+  document.getElementById('fin-'+tab).classList.add('active');
+  document.querySelectorAll('.seg-tabs-main .seg-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+}
+
+/* ── INIT ── */
+function initBars(){
+  var hEl=document.getElementById('h-bar'),hN=segsForEl(hEl);hEl._n=hN;
+  var hF=Math.round(0.4*hN),hH='';for(var i=0;i<hN;i++)hH+='<div class="wb-s'+(i<hF?' fl':'')+'"></div>';hEl.innerHTML=hH;
+  var ovEl=document.getElementById('fin-bar'),ovN=segsForEl(ovEl);ovEl._n=ovN;
+  var ovPct=Math.round(8037/8881*100),ovF=Math.round(ovPct/100*ovN),ovH='';
+  for(var i=0;i<ovN;i++)ovH+='<div class="ov-s'+(i<ovF?' f':'e')+'"></div>';ovEl.innerHTML=ovH;
+}
+
+document.getElementById('cat-strip').style.display='flex';
+renderTasks();renderHabits();renderFin();
+setTimeout(initBars,120);
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
 </body>
 </html>
