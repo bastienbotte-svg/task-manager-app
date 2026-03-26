@@ -1,7 +1,8 @@
 {
   "name": "Task Manager",
   "short_name": "Tasks",
-  "start_url": "/",
+  "start_url": "/task-manager-app/",
+  "scope": "/task-manager-app/",
   "display": "standalone",
   "background_color": "#f1f3f4",
   "theme_color": "#1a73e8",
