@@ -1097,3 +1097,14 @@ body{background:#e8e8e8;min-height:100vh;display:flex;align-items:flex-start;jus
 .gc.today-sched{outline:1.5px solid #111;outline-offset:1px;background:#e0e0de}
 .gc.future{background:#ebebeb}
 .gc.locked-cell{background:transparent;border:1px dashed #e0e0e0}
+
+/* ─── Full-screen layout — no phone frame ───────────────────────────────────── */
+body{padding:0}
+.phone{border-radius:0;padding:0;max-width:100%;background:#fff}
+.screen{border-radius:0;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;padding:0}
+.topbar{flex-shrink:0}
+.category-strip{flex-shrink:0}
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.health-top{flex-shrink:0;padding:24px 20px 16px}
+.health-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 20px 16px}
+.tab-bar{flex-shrink:0;margin-top:0}

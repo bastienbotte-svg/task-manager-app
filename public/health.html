@@ -10,129 +10,137 @@
 </head>
 <body>
 <div class="phone">
-  <div class="screen" style="padding:24px 20px">
+  <div class="screen">
 
-    <div class="big-heading">HEALTH TRACKER</div>
-
-    <div class="prog-row">
-      <span class="prog-label">WEEKLY PROGRESS</span>
-      <span class="prog-label">40%</span>
-    </div>
-    <div class="dotted-bar" id="dotbar"></div>
-    <div class="prog-meta">
-      <span><b>02</b> COMPLETED</span>
-      <span><b>03</b> REMAINING</span>
-    </div>
-
-    <div class="day-label">TODAY — WEDNESDAY</div>
-    <div class="habit-card today-active" id="card-stretch" onclick="toggle(this)">
-      <div class="icon-circle">
-        <svg viewBox="0 0 24 24"><path d="M12 2C8 2 5 6 5 10c0 5 7 12 7 12s7-7 7-12c0-4-3-8-7-8z"/><circle cx="12" cy="10" r="2.5"/></svg>
+    <!-- TOP: fixed header -->
+    <div class="health-top">
+      <div class="big-heading">HEALTH TRACKER</div>
+      <div class="prog-row">
+        <span class="prog-label">WEEKLY PROGRESS</span>
+        <span class="prog-label">40%</span>
       </div>
-      <div class="card-mid">
-        <div class="card-name">Stretching</div>
-        <div class="card-cat">MOBILITY</div>
-        <div class="card-when">MON · WED · SAT</div>
-      </div>
-      <div class="card-right">
-        <div class="streak-block">
-          <div class="streak-lbl">STREAK</div>
-          <div class="streak-num">09</div>
-        </div>
-        <div class="check-circle">
-          <svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg>
-        </div>
+      <div class="dotted-bar" id="dotbar"></div>
+      <div class="prog-meta">
+        <span><b>02</b> COMPLETED</span>
+        <span><b>03</b> REMAINING</span>
       </div>
     </div>
 
-    <div class="day-label" style="margin-top:14px">COMING UP</div>
+    <!-- MIDDLE: scrollable content -->
+    <div class="health-scroll">
 
-    <div class="habit-card upcoming">
-      <div class="icon-circle">
-        <svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="3"/><circle cx="16" cy="12" r="3"/><rect x="10.5" y="11" width="3" height="2" rx="0.5"/><rect x="6" y="9" width="2" height="6" rx="1"/><rect x="16" y="9" width="2" height="6" rx="1"/></svg>
-      </div>
-      <div class="card-mid">
-        <div class="card-name">Kettlebell</div>
-        <div class="card-cat">STRENGTH</div>
-        <div class="card-when">THU</div>
-      </div>
-      <div class="card-right">
-        <div class="streak-block">
-          <div class="streak-lbl">STREAK</div>
-          <div class="streak-num">03</div>
+      <div class="day-label">TODAY — WEDNESDAY</div>
+      <div class="habit-card today-active" id="card-stretch" onclick="toggle(this)">
+        <div class="icon-circle">
+          <svg viewBox="0 0 24 24"><path d="M12 2C8 2 5 6 5 10c0 5 7 12 7 12s7-7 7-12c0-4-3-8-7-8z"/><circle cx="12" cy="10" r="2.5"/></svg>
         </div>
-        <div class="check-circle">
-          <svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg>
+        <div class="card-mid">
+          <div class="card-name">Stretching</div>
+          <div class="card-cat">MOBILITY</div>
+          <div class="card-when">MON · WED · SAT</div>
+        </div>
+        <div class="card-right">
+          <div class="streak-block">
+            <div class="streak-lbl">STREAK</div>
+            <div class="streak-num">09</div>
+          </div>
+          <div class="check-circle">
+            <svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="habit-card upcoming">
-      <div class="icon-circle">
-        <svg viewBox="0 0 24 24"><path d="M12 2C8 2 5 6 5 10c0 5 7 12 7 12s7-7 7-12c0-4-3-8-7-8z"/><circle cx="12" cy="10" r="2.5"/></svg>
-      </div>
-      <div class="card-mid">
-        <div class="card-name">Stretching</div>
-        <div class="card-cat">MOBILITY</div>
-        <div class="card-when">SAT</div>
-      </div>
-      <div class="card-right">
-        <div class="streak-block">
-          <div class="streak-lbl">STREAK</div>
-          <div class="streak-num">09</div>
-        </div>
-        <div class="check-circle">
-          <svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg>
-        </div>
-      </div>
-    </div>
+      <div class="day-label" style="margin-top:14px">COMING UP</div>
 
-    <div class="habit-card locked-card">
-      <div class="icon-circle">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="2"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/><path d="M15 14l2 3M9 14l-2 3"/></svg>
-      </div>
-      <div class="card-mid">
-        <div class="card-name">Running</div>
-        <div class="card-cat">CARDIO</div>
-      </div>
-      <div class="card-right">
-        <div class="streak-block">
-          <div class="streak-lbl">UNLOCK AT</div>
-          <div class="streak-num">15</div>
-          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#ddd">kb streak</div>
+      <div class="habit-card upcoming">
+        <div class="icon-circle">
+          <svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="3"/><circle cx="16" cy="12" r="3"/><rect x="10.5" y="11" width="3" height="2" rx="0.5"/><rect x="6" y="9" width="2" height="6" rx="1"/><rect x="16" y="9" width="2" height="6" rx="1"/></svg>
         </div>
-        <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#d0d0d0" stroke-width="1.5"><rect x="2" y="6" width="10" height="8" rx="1"/><path d="M4 6V4a3 3 0 016 0v2"/></svg>
+        <div class="card-mid">
+          <div class="card-name">Kettlebell</div>
+          <div class="card-cat">STRENGTH</div>
+          <div class="card-when">THU</div>
+        </div>
+        <div class="card-right">
+          <div class="streak-block">
+            <div class="streak-lbl">STREAK</div>
+            <div class="streak-num">03</div>
+          </div>
+          <div class="check-circle">
+            <svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="section-label">CONSISTENCY GRID</div>
-    <div class="grid-header">
-      <div class="grid-day"></div>
-      <div class="grid-day">S</div><div class="grid-day">M</div><div class="grid-day">T</div>
-      <div class="grid-day today-col">W</div>
-      <div class="grid-day">T</div><div class="grid-day">F</div><div class="grid-day">S</div>
-    </div>
-    <div class="grid-row">
-      <div class="grid-act">stretch</div>
-      <div class="gc rest"></div><div class="gc done-cell"></div><div class="gc rest"></div>
-      <div class="gc today-sched"></div>
-      <div class="gc rest"></div><div class="gc rest"></div><div class="gc future"></div>
-    </div>
-    <div class="grid-row">
-      <div class="grid-act">kettlebell</div>
-      <div class="gc rest"></div><div class="gc rest"></div><div class="gc done-cell"></div>
-      <div class="gc rest"></div>
-      <div class="gc future"></div><div class="gc rest"></div><div class="gc rest"></div>
-    </div>
-    <div class="grid-row">
-      <div class="grid-act">running</div>
-      <div class="gc locked-cell"></div><div class="gc locked-cell"></div><div class="gc locked-cell"></div>
-      <div class="gc locked-cell"></div>
-      <div class="gc locked-cell"></div><div class="gc locked-cell"></div><div class="gc locked-cell"></div>
-    </div>
+      <div class="habit-card upcoming">
+        <div class="icon-circle">
+          <svg viewBox="0 0 24 24"><path d="M12 2C8 2 5 6 5 10c0 5 7 12 7 12s7-7 7-12c0-4-3-8-7-8z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        </div>
+        <div class="card-mid">
+          <div class="card-name">Stretching</div>
+          <div class="card-cat">MOBILITY</div>
+          <div class="card-when">SAT</div>
+        </div>
+        <div class="card-right">
+          <div class="streak-block">
+            <div class="streak-lbl">STREAK</div>
+            <div class="streak-num">09</div>
+          </div>
+          <div class="check-circle">
+            <svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg>
+          </div>
+        </div>
+      </div>
 
+      <div class="habit-card locked-card">
+        <div class="icon-circle">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="2"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/><path d="M15 14l2 3M9 14l-2 3"/></svg>
+        </div>
+        <div class="card-mid">
+          <div class="card-name">Running</div>
+          <div class="card-cat">CARDIO</div>
+        </div>
+        <div class="card-right">
+          <div class="streak-block">
+            <div class="streak-lbl">UNLOCK AT</div>
+            <div class="streak-num">15</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#ddd">kb streak</div>
+          </div>
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#d0d0d0" stroke-width="1.5"><rect x="2" y="6" width="10" height="8" rx="1"/><path d="M4 6V4a3 3 0 016 0v2"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">CONSISTENCY GRID</div>
+      <div class="grid-header">
+        <div class="grid-day"></div>
+        <div class="grid-day">S</div><div class="grid-day">M</div><div class="grid-day">T</div>
+        <div class="grid-day today-col">W</div>
+        <div class="grid-day">T</div><div class="grid-day">F</div><div class="grid-day">S</div>
+      </div>
+      <div class="grid-row">
+        <div class="grid-act">stretch</div>
+        <div class="gc rest"></div><div class="gc done-cell"></div><div class="gc rest"></div>
+        <div class="gc today-sched"></div>
+        <div class="gc rest"></div><div class="gc rest"></div><div class="gc future"></div>
+      </div>
+      <div class="grid-row">
+        <div class="grid-act">kettlebell</div>
+        <div class="gc rest"></div><div class="gc rest"></div><div class="gc done-cell"></div>
+        <div class="gc rest"></div>
+        <div class="gc future"></div><div class="gc rest"></div><div class="gc rest"></div>
+      </div>
+      <div class="grid-row">
+        <div class="grid-act">running</div>
+        <div class="gc locked-cell"></div><div class="gc locked-cell"></div><div class="gc locked-cell"></div>
+        <div class="gc locked-cell"></div>
+        <div class="gc locked-cell"></div><div class="gc locked-cell"></div><div class="gc locked-cell"></div>
+      </div>
+
+    </div><!-- end .health-scroll -->
+
+    <!-- BOTTOM: fixed tab bar -->
     <div class="tab-bar">
       <div class="tab inactive" onclick="location.href='index.html'">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
