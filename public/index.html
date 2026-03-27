@@ -123,7 +123,7 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .grid-act{font-family:'Share Tech Mono',monospace;font-size:9px;color:#888}
 .gc{height:26px;border-radius:4px;background:#e0e0de;position:relative;display:flex;align-items:center;justify-content:center}
 .gc-num{font-family:'Share Tech Mono',monospace;font-size:9px;line-height:1;pointer-events:none}
-.gc-cr{position:absolute;top:1px;right:2px;font-family:'Share Tech Mono',monospace;font-size:7px;color:#f5a623;line-height:1;pointer-events:none}
+.gc-cr{position:absolute;top:1px;right:2px;font-family:'Share Tech Mono',monospace;font-size:7px;color:#fff;line-height:1;pointer-events:none}
 .gc.dn{background:#111}.gc.dn .gc-num{color:#fff}.gc.pl .gc-num{color:#888}
 .gc.ms{background:#ccc}.gc.av{background:#e8e8e8}.gc.rs{background:transparent;border:1px dashed #ddd}
 .month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
@@ -611,7 +611,7 @@ function renderHabits(){
     if(!h.today&&!comingShown){comingShown=true;el.innerHTML+='<div class="day-lbl" style="margin-top:10px">COMING UP</div>';}
     var cc=h.today?'dark':'muted',nc=h.today?'dkv':'muv',sc=h.today?'dlbl':'mlbl';
     var ck=h.today?'<div class="ck'+(h.done?' ticked':'')+'" id="hck'+hi+'" onclick="event.stopPropagation();tickHabit('+hi+')"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></div>':'';
-    var creditsBadge=h.credits>0?'<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:#f5a623;margin-top:2px;letter-spacing:0.04em">+'+h.credits+' \u26a1</div>':'';
+    var creditsBadge=h.credits>0?'<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:'+(h.today?'#fff':'#555')+';margin-top:2px">+'+h.credits+'\u26a1</div>':'';
     var rightSide;
     if(h.freq==='count'){
       rightSide='<div style="text-align:right"><div class="nsub '+sc+'">THIS WEEK</div><div class="bnum '+nc+'">'+String(h.weekCount).padStart(2,'0')+'/'+h.target+'</div>'+creditsBadge+'</div>'+ck;
