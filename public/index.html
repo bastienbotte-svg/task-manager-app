@@ -339,6 +339,8 @@ function toggleTask(pi,ti){
   document.getElementById('pn'+pi).textContent=pct+'%';
   document.getElementById('tc'+pi+'_'+ti).classList.toggle('done',projects[pi].tasks[ti].d);
   document.getElementById('tt'+pi+'_'+ti).classList.toggle('done-txt',projects[pi].tasks[ti].d);
+  var task=projects[pi].tasks[ti];
+  fetch(GAS_TASKS,{method:'POST',body:JSON.stringify({action:'updateItem',id:task.id,Status:task.d?'DONE':'OPEN'})}).catch(function(){});
 }
 
 /* ── HABITS ── */
