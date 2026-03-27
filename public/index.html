@@ -301,7 +301,7 @@ function submitNewProject(){
   var tempId='__t'+Date.now();
   projects.push({id:tempId,name:name,cat:cat,tasks:[]});
   renderTasks();
-  fetch(GAS_TASKS,{method:'POST',body:JSON.stringify({action:'addItem',Type:'PROJECT',Name:name,Category:cat})})
+  fetch(GAS_TASKS,{method:'POST',body:JSON.stringify({action:'addItem',Type:'PROJECT',Name:name,Category:cat,Status:'To Do'})})
     .then(function(r){return r.json();}).then(function(d){
       if(d.success)projects.forEach(function(p){if(p.id===tempId)p.id=String(d.id);});
     }).catch(function(){});
@@ -320,7 +320,7 @@ function submitNewTask(pi){
   var tempId='__t'+Date.now();
   projects[pi].tasks.push({t:name,d:false,id:tempId});
   renderTasks();
-  fetch(GAS_TASKS,{method:'POST',body:JSON.stringify({action:'addItem',Type:'TASK',Name:name,Parent_ID:proj.id,Category:proj.cat})})
+  fetch(GAS_TASKS,{method:'POST',body:JSON.stringify({action:'addItem',Type:'TASK',Name:name,Parent_ID:proj.id,Category:proj.cat,Status:'To Do'})})
     .then(function(r){return r.json();}).then(function(d){
       if(d.success)projects[pi]&&projects[pi].tasks.forEach(function(t){if(t.id===tempId)t.id=String(d.id);});
     }).catch(function(){});
