@@ -376,8 +376,8 @@ function renderCatStrip(cats,sel){
 function projPct(p){return p.tasks.length?Math.round(p.tasks.filter(function(t){return t.d;}).length/p.tasks.length*100):0;}
 function renderTasks(){
   var el=document.getElementById('task-list');el.innerHTML='';
-  var list=currentCat?projects.filter(function(p){return p.cat===currentCat;}):projects;
-  list.forEach(function(p,pi){
+  projects.forEach(function(p,pi){
+    if(currentCat&&p.cat!==currentCat)return;
     var pct=projPct(p),cls=pct===0?'dashed':'solid',nc=pct===0?'fnt':'nrm',id='p'+pi;
     var tasks='';p.tasks.forEach(function(t,ti){tasks+='<div class="task-item" onclick="toggleTask('+pi+','+ti+')"><div class="task-check'+(t.d?' done':'')+'" id="tc'+pi+'_'+ti+'"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2"/></svg></div><span class="task-text'+(t.d?' done-txt':'')+'" id="tt'+pi+'_'+ti+'">'+t.t+'</span></div>';});
     tasks+='<div class="task-item" onclick="showAddTask('+pi+',event)"><div class="task-check" style="border:1px dashed #ddd"><svg viewBox="0 0 8 8" width="8" height="8" fill="none" stroke="#ccc" stroke-width="1.5"><line x1="4" y1="1" x2="4" y2="7"/><line x1="1" y1="4" x2="7" y2="4"/></svg></div><span class="task-text" style="color:#ddd">Add task</span></div><div id="at-'+pi+'" style="display:none;padding:2px 0"><input id="atv-'+pi+'" style="width:100%;font-family:\'Share Tech Mono\',monospace;font-size:9px;color:#111;border:1px solid #e0e0de;border-radius:6px;padding:5px 8px;outline:none" placeholder="Task name..." onkeydown="if(event.key===\'Enter\')submitNewTask('+pi+')"></div>';
@@ -385,7 +385,7 @@ function renderTasks(){
     card.innerHTML='<div class="card-top" onclick="toggleCard(\''+id+'\')"><div class="mid"><div class="ctitle">'+p.name+'</div><div class="cbar" id="cb'+pi+'"></div></div><div class="cright"><div><div class="bnum '+nc+'" id="pn'+pi+'">'+pct+'%</div></div></div></div><div class="expand-body" id="eb'+pi+'">'+tasks+'</div>';
     el.appendChild(card);
   });
-  setTimeout(function(){list.forEach(function(p,pi){var b=document.getElementById('cb'+pi);if(!b)return;var N=segsForEl(b);b._n=N;b.innerHTML=mkBar(projPct(p),N);});},50);
+  setTimeout(function(){projects.forEach(function(p,pi){var b=document.getElementById('cb'+pi);if(!b)return;var N=segsForEl(b);b._n=N;b.innerHTML=mkBar(projPct(p),N);});},50);
 }
 function toggleCard(id){document.getElementById('eb'+id.replace('p','')).classList.toggle('open');}
 function toggleTask(pi,ti){
