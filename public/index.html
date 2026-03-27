@@ -720,20 +720,20 @@ function renderFin(data){
     var tracked=trackedMap[name]||0;
     var pct=bud>0?Math.round(tracked/bud*100):0;
     var txs=transactions.filter(function(t){return t['Category']===name;}).map(function(t){return{m:t['Merchant']||'Other',d:t['Date']?t['Date'].substring(5):'',a:parseFloat(t['Amount']||'0')};});
-    if(type==='EXPENSE')expenses.push({name:name,tracked:Math.round(tracked),pct:pct,txOnly:false,txs:txs});
-    else if(type==='DEPOSIT'||type==='INCOME')deposits.push({name:name,tracked:Math.round(tracked),pct:pct,txOnly:false,txs:txs});
+    if(type==='EXPENSE')expenses.push({name:name,tracked:Math.round(tracked*100)/100,pct:pct,txOnly:false,txs:txs});
+    else if(type==='DEPOSIT'||type==='INCOME')deposits.push({name:name,tracked:Math.round(tracked*100)/100,pct:pct,txOnly:false,txs:txs});
   });
   var allTx=transactions.map(function(t){var tp=typeMap[t['Category']]||'';return{n:t['Merchant']||t['Category'],c:(t['Category']||'').toUpperCase(),a:parseFloat(t['Amount']||'0'),pos:tp==='DEPOSIT'||tp==='INCOME',d:t['Date']?t['Date'].substring(5):''};});
   var eH='';expenses.forEach(function(d,i){eH+=mkFinCard(d,i,false);});document.getElementById('fin-exp').innerHTML=eH||'<div style="'+MONO+';color:#ccc">No expenses</div>';
   var dH='';deposits.forEach(function(d,i){dH+=mkFinCard(d,i,true);});document.getElementById('fin-dep').innerHTML=dH||'<div style="'+MONO+';color:#ccc">No deposits</div>';
-  var tH='';allTx.forEach(function(t){tH+='<div class="tx-row"><div class="tx-dot" style="background:'+(t.pos?'#1D9E75':'#ddd')+'"></div><div style="flex:1;min-width:0"><div class="tx-name">'+t.n+'</div><div class="tx-sub">'+t.c+'</div></div><div class="tx-amt">'+(t.pos?'':'-')+t.a+'€ · '+t.d+'</div></div>';});
+  var tH='';allTx.forEach(function(t){tH+='<div class="tx-row"><div class="tx-dot" style="background:'+(t.pos?'#1D9E75':'#ddd')+'"></div><div style="flex:1;min-width:0"><div class="tx-name">'+t.n+'</div><div class="tx-sub">'+t.c+'</div></div><div class="tx-amt">'+(t.pos?'':'-')+t.a.toFixed(2)+'€ · '+t.d+'</div></div>';});
   document.getElementById('fin-tx').innerHTML=tH||'<div style="'+MONO+';color:#ccc">No transactions</div>';
-  var totalExp=expenses.reduce(function(s,d){return s+d.tracked;},0);
-  var totalDep=deposits.reduce(function(s,d){return s+d.tracked;},0);
-  var bal=totalDep-totalExp;
-  document.getElementById('ov-dep').textContent=totalDep.toLocaleString()+'€';
-  document.getElementById('ov-exp').textContent=totalExp.toLocaleString()+'€';
-  document.getElementById('ov-bal').textContent=(bal<0?'-':'')+Math.abs(bal).toLocaleString()+'€';
+  var totalExp=Math.round(expenses.reduce(function(s,d){return s+d.tracked;},0)*100)/100;
+  var totalDep=Math.round(deposits.reduce(function(s,d){return s+d.tracked;},0)*100)/100;
+  var bal=Math.round((totalDep-totalExp)*100)/100;
+  document.getElementById('ov-dep').textContent=totalDep.toFixed(2)+'€';
+  document.getElementById('ov-exp').textContent=totalExp.toFixed(2)+'€';
+  document.getElementById('ov-bal').textContent=(bal<0?'-':'')+Math.abs(bal).toFixed(2)+'€';
   document.getElementById('ov-bal').className='ov-val'+(bal>=0?' pos':'');
   var ovEl=document.getElementById('fin-bar'),ovN=segsForEl(ovEl),ovPct=totalDep>0?Math.round(totalExp/totalDep*100):0;
   ovEl._n=ovN;var ovH='';for(var i=0;i<ovN;i++)ovH+='<div class="ov-s'+(i<Math.round(ovPct/100*ovN)?' f':'e')+'"></div>';ovEl.innerHTML=ovH;
@@ -745,11 +745,11 @@ function renderFin(data){
 function mkFinCard(d,i,isDep){
   var over=d.pct>100&&!isDep,nc=over?'ovr':'nrm',pc=over?'olbl':'lbl';
   var id='fc'+(isDep?'d':'')+i,hasTabs=!d.txOnly&&!isDep;
-  var txH='';d.txs.forEach(function(t){txH+='<div class="tx-row"><div class="tx-dot"></div><div style="flex:1;min-width:0"><div class="tx-name">'+(t.m||d.name)+'</div><div class="tx-sub">'+t.d+'</div></div><div class="tx-amt">'+t.a+'€</div></div>';});
+  var txH='';d.txs.forEach(function(t){txH+='<div class="tx-row"><div class="tx-dot"></div><div style="flex:1;min-width:0"><div class="tx-name">'+(t.m||d.name)+'</div><div class="tx-sub">'+t.d+'</div></div><div class="tx-amt">'+t.a.toFixed(2)+'€</div></div>';});
   var comH='';
-  if(hasTabs){var map={};d.txs.forEach(function(t){var k=t.m||'Other';if(!map[k]){map[k]={total:0,count:0};}map[k].total+=t.a;map[k].count++;});Object.keys(map).sort(function(a,b){return map[b].total-map[a].total;}).forEach(function(k){comH+='<div class="tx-row"><div class="tx-dot"></div><div style="flex:1;min-width:0"><div class="tx-name">'+k+'</div><div class="tx-sub">'+map[k].count+' tx</div></div><div class="tx-amt">'+map[k].total+'€</div></div>';});}
+  if(hasTabs){var map={};d.txs.forEach(function(t){var k=t.m||'Other';if(!map[k]){map[k]={total:0,count:0};}map[k].total+=t.a;map[k].count++;});Object.keys(map).sort(function(a,b){return map[b].total-map[a].total;}).forEach(function(k){comH+='<div class="tx-row"><div class="tx-dot"></div><div style="flex:1;min-width:0"><div class="tx-name">'+k+'</div><div class="tx-sub">'+map[k].count+' tx</div></div><div class="tx-amt">'+(Math.round(map[k].total*100)/100).toFixed(2)+'€</div></div>';});}
   var exp='<div class="expand-body" id="'+id+'_eb">'+(hasTabs?'<div class="drill-tabs"><div class="drill-tab active" id="'+id+'_tt" onclick="swD(\''+id+'\',\'tx\')">TRANSACTIONS</div><div class="drill-tab" id="'+id+'_tc" onclick="swD(\''+id+'\',\'com\')">COMMERCE</div></div>':'')+'<div id="'+id+'_tx">'+txH+'</div>'+(hasTabs?'<div id="'+id+'_com" style="display:none">'+comH+'</div>':'')+'</div>';
-  return '<div class="card solid" id="'+id+'"><div class="card-top" onclick="toggleFin(\''+id+'\')"><div class="mid"><div class="ctitle">'+d.name+'</div><div class="cbar" id="'+id+'_bar"></div></div><div class="cright"><div style="text-align:right"><div class="bnum '+nc+'">'+d.tracked+'€</div><div class="nsub '+pc+'">'+d.pct+'%</div></div></div></div>'+exp+'</div>';
+  return '<div class="card solid" id="'+id+'"><div class="card-top" onclick="toggleFin(\''+id+'\')"><div class="mid"><div class="ctitle">'+d.name+'</div><div class="cbar" id="'+id+'_bar"></div></div><div class="cright"><div style="text-align:right"><div class="bnum '+nc+'">'+d.tracked.toFixed(2)+'€</div><div class="nsub '+pc+'">'+d.pct+'%</div></div></div></div>'+exp+'</div>';
 }
 function toggleFin(id){document.getElementById(id+'_eb').classList.toggle('open');}
 function swD(id,tab){
