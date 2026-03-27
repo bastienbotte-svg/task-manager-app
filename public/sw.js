@@ -1,5 +1,5 @@
-const CACHE_NAME = 'tm-shell-v5';
-const SHELL = ['/', '/style.css', '/app.js', '/manifest.json'];
+const CACHE_NAME = 'tm-shell-v6';
+const SHELL = ['/task-manager-app/', '/task-manager-app/style.css', '/task-manager-app/manifest.json'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
