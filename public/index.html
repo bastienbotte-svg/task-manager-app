@@ -609,9 +609,10 @@ function renderHabits(){
   habits.forEach(function(h,hi){
     if(h.locked){el.innerHTML+='<div class="card dashed"><div class="card-top"><div class="mid"><div class="ctitle">'+h.name+'</div><div class="csub">'+h.sub+'</div></div><div class="cright"><div><div class="nsub mlbl">UNLOCK AT</div><div class="bnum fnt">15</div></div></div></div></div>';return;}
     if(!h.today&&!comingShown){comingShown=true;el.innerHTML+='<div class="day-lbl" style="margin-top:10px">COMING UP</div>';}
-    var cc=h.today?'dark':'muted',nc=h.today?'dkv':'muv',sc=h.today?'dlbl':'mlbl';
+    var isDark=h.today||h.done;
+    var cc=isDark?'dark':'muted',nc=isDark?'dkv':'muv',sc=isDark?'dlbl':'mlbl';
     var ck=h.today?'<div class="ck'+(h.done?' ticked':'')+'" id="hck'+hi+'" onclick="event.stopPropagation();tickHabit('+hi+')"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></div>':'';
-    var creditsBadge=h.credits>0?'<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:'+(h.today?'#fff':'#555')+';margin-top:2px">+'+h.credits+'\u26a1</div>':'';
+    var creditsBadge=h.credits>0?'<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:'+(isDark?'#fff':'#555')+';margin-top:2px">+'+h.credits+'\u26a1</div>':'';
     var rightSide;
     if(h.freq==='count'){
       rightSide='<div style="text-align:right"><div class="nsub '+sc+'">THIS WEEK</div><div class="bnum '+nc+'">'+String(h.weekCount).padStart(2,'0')+'/'+h.target+'</div>'+creditsBadge+'</div>'+ck;
