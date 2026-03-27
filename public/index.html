@@ -210,6 +210,17 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
   </div>
 </div>
 
+<!-- NEW PROJECT OVERLAY -->
+<div class="inbox-overlay" id="new-project-overlay">
+  <div class="inbox-tag">NEW PROJECT</div>
+  <input id="np-name" class="inbox-input" style="height:40px;margin-bottom:6px" placeholder="Project name...">
+  <select id="np-cat" class="inbox-input" style="height:38px;background:#fff;cursor:pointer"></select>
+  <div class="inbox-actions" style="margin-top:8px">
+    <span class="inbox-cancel" onclick="closeNewProject()">Cancel</span>
+    <button class="inbox-send" onclick="submitNewProject()">Create</button>
+  </div>
+</div>
+
 <!-- INBOX OVERLAY -->
 <div class="inbox-overlay" id="inbox-overlay">
   <div class="inbox-tag">INBOX · <span id="inbox-tab-label">TASKS</span></div>
@@ -265,8 +276,54 @@ function selectCat(el,cat){
   renderTasks();
 }
 function handlePlus(){
-  var actions={tasks:'New project',habits:'New habit',finance:'Add transaction',grocery:'Add meal'};
+  if(currentTab==='tasks'){openNewProject();return;}
+  var actions={habits:'New habit',finance:'Add transaction',grocery:'Add meal'};
   alert(actions[currentTab]);
+}
+function openNewProject(){
+  var sel=document.getElementById('np-cat');
+  sel.innerHTML=document.querySelectorAll('#cat-strip .cat-t');
+  sel.innerHTML='';
+  document.querySelectorAll('#cat-strip .cat-t').forEach(function(c){
+    var o=document.createElement('option');o.value=c.textContent;o.textContent=c.textContent;sel.appendChild(o);
+  });
+  if(currentCat)sel.value=currentCat;
+  document.getElementById('np-name').value='';
+  document.getElementById('new-project-overlay').classList.add('open');
+  setTimeout(function(){document.getElementById('np-name').focus();},50);
+}
+function closeNewProject(){document.getElementById('new-project-overlay').classList.remove('open');}
+function submitNewProject(){
+  var name=document.getElementById('np-name').value.trim();
+  var cat=document.getElementById('np-cat').value;
+  if(!name)return;
+  closeNewProject();
+  var tempId='__t'+Date.now();
+  projects.push({id:tempId,name:name,cat:cat,tasks:[]});
+  renderTasks();
+  fetch(GAS_TASKS,{method:'POST',body:JSON.stringify({action:'addItem',Type:'PROJECT',Name:name,Category:cat})})
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.success)projects.forEach(function(p){if(p.id===tempId)p.id=String(d.id);});
+    }).catch(function(){});
+}
+function showAddTask(pi,e){
+  if(e)e.stopPropagation();
+  var row=document.getElementById('at-'+pi);if(!row)return;
+  row.style.display='block';
+  var inp=document.getElementById('atv-'+pi);if(inp)setTimeout(function(){inp.focus();},50);
+}
+function submitNewTask(pi){
+  var inp=document.getElementById('atv-'+pi);if(!inp)return;
+  var name=inp.value.trim();if(!name)return;
+  var proj=projects[pi];
+  inp.value='';document.getElementById('at-'+pi).style.display='none';
+  var tempId='__t'+Date.now();
+  projects[pi].tasks.push({t:name,d:false,id:tempId});
+  renderTasks();
+  fetch(GAS_TASKS,{method:'POST',body:JSON.stringify({action:'addItem',Type:'TASK',Name:name,Parent_ID:proj.id,Category:proj.cat})})
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.success)projects[pi]&&projects[pi].tasks.forEach(function(t){if(t.id===tempId)t.id=String(d.id);});
+    }).catch(function(){});
 }
 
 /* ── INBOX ── */
@@ -323,6 +380,7 @@ function renderTasks(){
   list.forEach(function(p,pi){
     var pct=projPct(p),cls=pct===0?'dashed':'solid',nc=pct===0?'fnt':'nrm',id='p'+pi;
     var tasks='';p.tasks.forEach(function(t,ti){tasks+='<div class="task-item" onclick="toggleTask('+pi+','+ti+')"><div class="task-check'+(t.d?' done':'')+'" id="tc'+pi+'_'+ti+'"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2"/></svg></div><span class="task-text'+(t.d?' done-txt':'')+'" id="tt'+pi+'_'+ti+'">'+t.t+'</span></div>';});
+    tasks+='<div class="task-item" onclick="showAddTask('+pi+',event)"><div class="task-check" style="border:1px dashed #ddd"><svg viewBox="0 0 8 8" width="8" height="8" fill="none" stroke="#ccc" stroke-width="1.5"><line x1="4" y1="1" x2="4" y2="7"/><line x1="1" y1="4" x2="7" y2="4"/></svg></div><span class="task-text" style="color:#ddd">Add task</span></div><div id="at-'+pi+'" style="display:none;padding:2px 0"><input id="atv-'+pi+'" style="width:100%;font-family:\'Share Tech Mono\',monospace;font-size:9px;color:#111;border:1px solid #e0e0de;border-radius:6px;padding:5px 8px;outline:none" placeholder="Task name..." onkeydown="if(event.key===\'Enter\')submitNewTask('+pi+')"></div>';
     var card=document.createElement('div');card.className='card '+cls;card.id=id;
     card.innerHTML='<div class="card-top" onclick="toggleCard(\''+id+'\')"><div class="mid"><div class="ctitle">'+p.name+'</div><div class="cbar" id="cb'+pi+'"></div></div><div class="cright"><div><div class="bnum '+nc+'" id="pn'+pi+'">'+pct+'%</div></div></div></div><div class="expand-body" id="eb'+pi+'">'+tasks+'</div>';
     el.appendChild(card);
