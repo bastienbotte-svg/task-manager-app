@@ -653,20 +653,28 @@ function renderHabitsGrid(data){
       var logged=logMap[a['ID']+'_'+dateStr]===true;
       var cell;
       if(hObj.freq==='weekly'){
-        var scheduled=hObj.days.indexOf(dowAbbr)!==-1;
-        if(!scheduled){cell='<div class="gc rs"></div>';}
-        else if(logged){cell='<div class="gc dn"><span class="gc-num">'+hObj.streak+'</span>'+((!isPast&&hObj.credits>0)?'<span class="gc-cr">+'+hObj.credits+'</span>':'')+'</div>';}
-        else if(isPast){cell='<div class="gc ms"></div>';}
-        else{cell='<div class="gc pl"><span class="gc-num">'+hObj.streak+'</span>'+(hObj.credits>0?'<span class="gc-cr">+'+hObj.credits+'</span>':'')+'</div>';}
+        // Check logged first — extra sessions on non-scheduled days still show black
+        if(logged){
+          var badge=(!isPast&&hObj.credits>0)?'<span class="gc-cr">+'+hObj.credits+'</span>':'';
+          cell='<div class="gc dn"><span class="gc-num">'+hObj.streak+'</span>'+badge+'</div>';
+        }else{
+          var scheduled=hObj.days.indexOf(dowAbbr)!==-1;
+          if(!scheduled){cell='<div class="gc rs"></div>';}
+          else if(isPast){cell='<div class="gc ms"></div>';}
+          else{
+            var badge2=hObj.credits>0?'<span class="gc-cr">+'+hObj.credits+'</span>':'';
+            cell='<div class="gc pl"><span class="gc-num">'+(hObj.streak+1)+'</span>'+badge2+'</div>';
+          }
+        }
       }else if(hObj.freq==='count'){
         if(logged){cell='<div class="gc dn"><span class="gc-num">'+hObj.streak+'</span></div>';}
-        else{cell='<div class="gc av"></div>';}
+        else{cell='<div class="gc rs"></div>';}
       }else{
         var dueStr='';
         if(hObj.daysUntilDue===0){dueStr=todayStr;}
         else if(hObj.daysUntilDue>0){var dd=new Date(todayStr+'T00:00:00');dd.setDate(dd.getDate()+hObj.daysUntilDue);dueStr=dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0');}
         if(logged){cell='<div class="gc dn"><span class="gc-num">'+hObj.streak+'</span></div>';}
-        else if(dateStr===dueStr){cell='<div class="gc pl"><span class="gc-num">'+hObj.streak+'</span></div>';}
+        else if(dateStr===dueStr){cell='<div class="gc pl"><span class="gc-num">'+(hObj.streak+1)+'</span></div>';}
         else{cell='<div class="gc rs"></div>';}
       }
       row+=cell;
@@ -677,7 +685,9 @@ function renderHabitsGrid(data){
 }
 function addExtraSession(hi){
   var h=habits[hi];
-  if(h.freq==='count'){h.weekCount++;h.sub=buildHabitSub(h);renderHabits();}
+  h.done=true;h.today=true;
+  if(h.freq==='count'){h.weekCount++;h.sub=buildHabitSub(h);}
+  renderHabits();
   updateHabitProgress();
   fetch(GAS_HABITS,{method:'POST',body:JSON.stringify({action:'logActivity',activity_id:h.id,date:todayISO(),completed:true})}).catch(function(){});
 }
