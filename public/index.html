@@ -686,6 +686,7 @@ function renderHabitsGrid(data){
 function addExtraSession(hi){
   var h=habits[hi];
   h.done=true;h.today=true;
+  h.credits++;
   if(h.freq==='count'){h.weekCount++;h.sub=buildHabitSub(h);}
   renderHabits();
   updateHabitProgress();
