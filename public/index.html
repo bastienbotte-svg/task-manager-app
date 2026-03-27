@@ -116,15 +116,16 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .prog-meta span b{color:#111;font-weight:normal}
 .day-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;letter-spacing:0.1em;margin-bottom:8px}
 .sec-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa;letter-spacing:0.1em;margin:14px 0 8px}
-.grid-hdr{display:grid;grid-template-columns:56px repeat(7,1fr);gap:3px;margin-bottom:3px}
+.grid-hdr{display:grid;grid-template-columns:56px repeat(10,1fr);gap:3px;margin-bottom:3px}
 .grid-d{font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa;text-align:center}
 .grid-d.tc{color:#111}
-.grid-rw{display:grid;grid-template-columns:56px repeat(7,1fr);gap:3px;margin-bottom:3px;align-items:center}
+.grid-rw{display:grid;grid-template-columns:56px repeat(10,1fr);gap:3px;margin-bottom:3px;align-items:center}
 .grid-act{font-family:'Share Tech Mono',monospace;font-size:9px;color:#888}
-.gc{height:22px;border-radius:4px;background:#e0e0de}
-.gc.dn{background:#111}.gc.rs{background:transparent;border:1px dashed #ddd}
-.gc.ts{outline:1.5px solid #111;outline-offset:1px;background:#e0e0de}
-.gc.fu{background:#ebebeb}.gc.lc{background:transparent;border:1px dashed #e0e0e0}
+.gc{height:26px;border-radius:4px;background:#e0e0de;position:relative;display:flex;align-items:center;justify-content:center}
+.gc-num{font-family:'Share Tech Mono',monospace;font-size:9px;line-height:1;pointer-events:none}
+.gc-cr{position:absolute;top:1px;right:2px;font-family:'Share Tech Mono',monospace;font-size:7px;color:#f5a623;line-height:1;pointer-events:none}
+.gc.dn{background:#111}.gc.dn .gc-num{color:#fff}.gc.pl .gc-num{color:#888}
+.gc.ms{background:#ccc}.gc.av{background:#e8e8e8}.gc.rs{background:transparent;border:1px dashed #ddd}
 .month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .month-lbl{font-family:'Share Tech Mono',monospace;font-size:13px;color:#111;letter-spacing:0.05em}
 .nav-btn{width:26px;height:26px;border-radius:7px;border:1px solid #eee;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -182,7 +183,7 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
     <div class="day-lbl">TODAY — WEDNESDAY</div>
     <div id="habit-list"></div>
     <div class="sec-lbl">CONSISTENCY GRID</div>
-    <div class="grid-hdr" id="grid-hdr"><div class="grid-d"></div><div class="grid-d">S</div><div class="grid-d">M</div><div class="grid-d">T</div><div class="grid-d">W</div><div class="grid-d">T</div><div class="grid-d">F</div><div class="grid-d">S</div></div>
+    <div class="grid-hdr" id="grid-hdr"><div class="grid-d"></div></div>
     <div id="grid-body"></div>
   </div></div>
 </div>
@@ -617,47 +618,68 @@ function renderHabits(){
     }else{
       rightSide='<div><div class="nsub '+sc+'">STREAK</div><div class="bnum '+nc+'">'+String(h.streak).padStart(2,'0')+'</div>'+creditsBadge+'</div>'+ck;
     }
-    var gear='<div style="display:flex;justify-content:flex-end;margin-top:8px"><div class="icon-btn" onclick="event.stopPropagation();openEditHabit('+hi+')">'+gearSvg+'</div></div>';
+    var gear='<div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px"><div class="icon-btn" onclick="event.stopPropagation();addExtraSession('+hi+')" title="Log extra session"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="icon-btn" onclick="event.stopPropagation();openEditHabit('+hi+')">'+gearSvg+'</div></div>';
     var exp='<div class="expand-body" id="heb'+hi+'"><div class="habit-note">'+(h.note||'')+'</div>'+(h.yt?'<a class="yt-link" href="'+h.yt+'" target="_blank"><div class="yt-icon"><svg viewBox="0 0 24 24"><path d="M10 8l6 4-6 4V8z"/></svg></div><span class="yt-text">Watch session on YouTube</span><span class="yt-arrow">↗</span></a>':'')+gear+'</div>';
     el.innerHTML+='<div class="card '+cc+'" id="h'+hi+'"><div class="card-top" onclick="document.getElementById(\'heb'+hi+'\').classList.toggle(\'open\')"><div class="mid"><div class="ctitle">'+h.name+'</div><div class="csub">'+h.sub+'</div></div><div class="cright">'+rightSide+'</div></div>'+exp+'</div>';
   });
 }
 function renderHabitsGrid(data){
   var todayStr=todayISO();
-  var monday=getMondayISO(todayStr);
-  var week=[];
-  for(var i=0;i<7;i++){var d=new Date(monday+'T00:00:00');d.setDate(d.getDate()+i);week.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));}
+  var DAY2=['Su','Mo','Tu','We','Th','Fr','Sa'];
+  // 10-day window: today = index 2 (offset -2..+7)
+  var win=[];
+  for(var i=-2;i<=7;i++){var d=new Date(todayStr+'T00:00:00');d.setDate(d.getDate()+i);win.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));}
   var logMap={};
   (data.log||[]).forEach(function(r){logMap[r['Activity_ID']+'_'+r['Date']]=String(r['Completed']).toUpperCase()==='TRUE';});
-  // Mark today column in header (Sun=col1 Mon=col2 ... Sat=col7)
-  var todayDow=new Date().getDay();
-  var hdrCols=document.querySelectorAll('#grid-hdr .grid-d');
-  hdrCols.forEach(function(c){c.classList.remove('tc');});
-  if(hdrCols[todayDow+1])hdrCols[todayDow+1].classList.add('tc');
+  // Build header dynamically
+  var hdr=document.getElementById('grid-hdr');
+  hdr.innerHTML='<div class="grid-d"></div>';
+  win.forEach(function(dateStr){
+    var dow=new Date(dateStr+'T00:00:00').getDay();
+    hdr.innerHTML+='<div class="grid-d'+(dateStr===todayStr?' tc':'')+'">'+DAY2[dow]+'</div>';
+  });
   // Render rows
   var body=document.getElementById('grid-body');body.innerHTML='';
   var active=(data.activities||[]).filter(function(a){return String(a['Status']||'').toLowerCase()!=='locked';});
   active.forEach(function(a){
-    var days=a['Days']?a['Days'].split(',').map(function(d){return d.trim();}).filter(Boolean):[];
+    var hObj=habits.find(function(h){return String(h.id)===String(a['ID']);});
+    if(!hObj)return;
     var shortName=a['Name'].toLowerCase().substring(0,7);
     var row='<div class="grid-rw"><div class="grid-act">'+shortName+'</div>';
-    // week[] is Sun Mon Tue Wed Thu Fri Sat (index 0-6 = DOW 0-6)
-    for(var i=0;i<7;i++){
-      var dateStr=week[i];
-      var dow=DAY_ABBR[i];
-      var scheduled=days.indexOf(dow)!==-1;
-      var logged=logMap[a['ID']+'_'+dateStr];
-      var isToday=dateStr===todayStr;
-      var cls;
-      if(!scheduled){cls='gc rs';}
-      else if(logged===true){cls=isToday?'gc dn ts':'gc dn';}
-      else if(logged===false){cls='gc';}
-      else{cls=isToday?'gc ts':dateStr>todayStr?'gc fu':'gc';}
-      row+='<div class="'+cls+'"></div>';
-    }
+    win.forEach(function(dateStr){
+      var isPast=dateStr<todayStr;
+      var dow=new Date(dateStr+'T00:00:00').getDay();
+      var dowAbbr=DAY_ABBR[dow];
+      var logged=logMap[a['ID']+'_'+dateStr]===true;
+      var cell;
+      if(hObj.freq==='weekly'){
+        var scheduled=hObj.days.indexOf(dowAbbr)!==-1;
+        if(!scheduled){cell='<div class="gc rs"></div>';}
+        else if(logged){cell='<div class="gc dn"><span class="gc-num">'+hObj.streak+'</span>'+((!isPast&&hObj.credits>0)?'<span class="gc-cr">+'+hObj.credits+'</span>':'')+'</div>';}
+        else if(isPast){cell='<div class="gc ms"></div>';}
+        else{cell='<div class="gc pl"><span class="gc-num">'+hObj.streak+'</span>'+(hObj.credits>0?'<span class="gc-cr">+'+hObj.credits+'</span>':'')+'</div>';}
+      }else if(hObj.freq==='count'){
+        if(logged){cell='<div class="gc dn"><span class="gc-num">'+hObj.streak+'</span></div>';}
+        else{cell='<div class="gc av"></div>';}
+      }else{
+        var dueStr='';
+        if(hObj.daysUntilDue===0){dueStr=todayStr;}
+        else if(hObj.daysUntilDue>0){var dd=new Date(todayStr+'T00:00:00');dd.setDate(dd.getDate()+hObj.daysUntilDue);dueStr=dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0');}
+        if(logged){cell='<div class="gc dn"><span class="gc-num">'+hObj.streak+'</span></div>';}
+        else if(dateStr===dueStr){cell='<div class="gc pl"><span class="gc-num">'+hObj.streak+'</span></div>';}
+        else{cell='<div class="gc rs"></div>';}
+      }
+      row+=cell;
+    });
     row+='</div>';
     var tmp=document.createElement('div');tmp.innerHTML=row;body.appendChild(tmp.firstChild);
   });
+}
+function addExtraSession(hi){
+  var h=habits[hi];
+  if(h.freq==='count'){h.weekCount++;h.sub=buildHabitSub(h);renderHabits();}
+  updateHabitProgress();
+  fetch(GAS_HABITS,{method:'POST',body:JSON.stringify({action:'logActivity',activity_id:h.id,date:todayISO(),completed:true})}).catch(function(){});
 }
 function tickHabit(hi){
   var h=habits[hi];
