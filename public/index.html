@@ -307,7 +307,9 @@ function buildProjects(data){
     if(!byParent[pid])byParent[pid]=[];
     byParent[pid].push({t:t['Name'],d:String(t['Status']||'').toUpperCase()==='DONE',id:t['ID']});
   });
-  return (data.projects||[]).map(function(p){
+  return (data.projects||[]).filter(function(p){
+    return String(p['Status']||'').toUpperCase()!=='DONE';
+  }).map(function(p){
     return {id:p['ID'],name:p['Name'],cat:p['Category']||'',tasks:byParent[String(p['ID'])]||[]};
   });
 }
@@ -341,6 +343,13 @@ function toggleTask(pi,ti){
   document.getElementById('tt'+pi+'_'+ti).classList.toggle('done-txt',projects[pi].tasks[ti].d);
   var task=projects[pi].tasks[ti];
   fetch(GAS_TASKS,{method:'POST',body:JSON.stringify({action:'updateItem',id:task.id,Status:task.d?'DONE':'OPEN'})}).catch(function(){});
+  // If project is now 100% done, mark it done in GAS and remove from view
+  if(projPct(projects[pi])===100){
+    var proj=projects[pi];
+    fetch(GAS_TASKS,{method:'POST',body:JSON.stringify({action:'updateItem',id:proj.id,Status:'DONE'})}).catch(function(){});
+    projects.splice(pi,1);
+    renderTasks();
+  }
 }
 
 /* ── HABITS ── */
