@@ -145,6 +145,8 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .grocery-icon svg{width:22px;height:22px;stroke:#ccc;fill:none;stroke-width:1.5}
 .grocery-msg{font-family:'Share Tech Mono',monospace;font-size:11px;color:#bbb;line-height:1.7}
 .grocery-sub{font-family:'Share Tech Mono',monospace;font-size:9px;color:#ddd;margin-top:8px}
+.day-btn{font-family:'Share Tech Mono',monospace;font-size:9px;padding:5px 9px;border-radius:6px;border:1px solid #e0e0de;color:#aaa;cursor:pointer;user-select:none}
+.day-btn.sel{background:#111;color:#fff;border-color:#111}
 </style>
 </head>
 <body>
@@ -207,6 +209,29 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
     <div class="grocery-icon"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></div>
     <div class="grocery-msg">I am cooking,<br>I will be there soon</div>
     <div class="grocery-sub">Weekly menu coming up</div>
+  </div>
+</div>
+
+<!-- NEW HABIT OVERLAY -->
+<div class="inbox-overlay" id="new-habit-overlay">
+  <div class="inbox-tag">NEW HABIT</div>
+  <input id="nh-name" class="inbox-input" style="height:40px;margin-bottom:6px" placeholder="Habit name...">
+  <input id="nh-cat" class="inbox-input" style="height:40px;margin-bottom:8px" placeholder="Category (optional)...">
+  <div style="margin-bottom:10px">
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa;margin-bottom:6px;letter-spacing:0.06em">DAYS</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">
+      <div class="day-btn" id="nb-Mon" onclick="toggleNbDay('Mon')">Mon</div>
+      <div class="day-btn" id="nb-Tue" onclick="toggleNbDay('Tue')">Tue</div>
+      <div class="day-btn" id="nb-Wed" onclick="toggleNbDay('Wed')">Wed</div>
+      <div class="day-btn" id="nb-Thu" onclick="toggleNbDay('Thu')">Thu</div>
+      <div class="day-btn" id="nb-Fri" onclick="toggleNbDay('Fri')">Fri</div>
+      <div class="day-btn" id="nb-Sat" onclick="toggleNbDay('Sat')">Sat</div>
+      <div class="day-btn" id="nb-Sun" onclick="toggleNbDay('Sun')">Sun</div>
+    </div>
+  </div>
+  <div class="inbox-actions">
+    <span class="inbox-cancel" onclick="closeNewHabit()">Cancel</span>
+    <button class="inbox-send" onclick="submitNewHabit()">Create</button>
   </div>
 </div>
 
@@ -277,8 +302,7 @@ function selectCat(el,cat){
 }
 function handlePlus(){
   if(currentTab==='tasks'){openNewProject();return;}
-  var actions={habits:'New habit',finance:'Add transaction',grocery:'Add meal'};
-  alert(actions[currentTab]);
+  if(currentTab==='habits'){openNewHabit();return;}
 }
 function openNewProject(){
   var sel=document.getElementById('np-cat');
@@ -293,6 +317,36 @@ function openNewProject(){
   setTimeout(function(){document.getElementById('np-name').focus();},50);
 }
 function closeNewProject(){document.getElementById('new-project-overlay').classList.remove('open');}
+function openNewHabit(){
+  document.getElementById('nh-name').value='';
+  document.getElementById('nh-cat').value='';
+  document.querySelectorAll('.day-btn').forEach(function(b){b.classList.remove('sel');});
+  document.getElementById('new-habit-overlay').classList.add('open');
+  setTimeout(function(){document.getElementById('nh-name').focus();},50);
+}
+function closeNewHabit(){document.getElementById('new-habit-overlay').classList.remove('open');}
+function toggleNbDay(d){document.getElementById('nb-'+d).classList.toggle('sel');}
+function submitNewHabit(){
+  var name=document.getElementById('nh-name').value.trim();
+  if(!name)return;
+  var cat=document.getElementById('nh-cat').value.trim();
+  var days=[];
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(d){
+    if(document.getElementById('nb-'+d).classList.contains('sel'))days.push(d);
+  });
+  closeNewHabit();
+  var tempId='__h'+Date.now();
+  var todayAbbr=DAY_ABBR[new Date().getDay()];
+  habits.push({id:tempId,name:name,sub:cat+(days.length?' · '+days.join(' '):''),streak:0,done:false,today:days.indexOf(todayAbbr)!==-1,locked:false,note:'',yt:'',days:days});
+  renderHabits();
+  updateHabitProgress();
+  fetch(GAS_HABITS,{method:'POST',body:JSON.stringify({action:'addActivity',Name:name,Category:cat,Days:days.join(','),Status:'active'})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success)habits.forEach(function(h){if(h.id===tempId)h.id=String(d.id);});
+    })
+    .catch(function(e){console.error('addHabit failed',e);});
+}
 function submitNewProject(){
   var name=document.getElementById('np-name').value.trim();
   var cat=document.getElementById('np-cat').value;
