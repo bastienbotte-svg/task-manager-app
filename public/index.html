@@ -447,7 +447,7 @@ function renderFin(data){
     var bud=budMap[name]||parseFloat(c['Budget']||'0');
     var tracked=trackedMap[name]||0;
     var pct=bud>0?Math.round(tracked/bud*100):0;
-    var txs=transactions.filter(function(t){return t['Category']===name;}).map(function(t){return{m:t['Merchant']||'',d:t['Date']?t['Date'].substring(5):'',a:parseFloat(t['Amount']||'0')};});
+    var txs=transactions.filter(function(t){return t['Category']===name;}).map(function(t){return{m:t['Merchant']||'Other',d:t['Date']?t['Date'].substring(5):'',a:parseFloat(t['Amount']||'0')};});
     if(type==='EXPENSE')expenses.push({name:name,tracked:Math.round(tracked),pct:pct,txOnly:false,txs:txs});
     else if(type==='DEPOSIT'||type==='INCOME')deposits.push({name:name,tracked:Math.round(tracked),pct:pct,txOnly:false,txs:txs});
   });
