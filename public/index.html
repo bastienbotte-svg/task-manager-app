@@ -219,9 +219,9 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
   </div>
 </div>
 
-<!-- NEW HABIT OVERLAY -->
+<!-- NEW / EDIT HABIT OVERLAY -->
 <div class="inbox-overlay" id="new-habit-overlay">
-  <div class="inbox-tag">NEW HABIT</div>
+  <div class="inbox-tag" id="nh-title">NEW HABIT</div>
   <input id="nh-name" class="inbox-input" style="height:40px;margin-bottom:6px" placeholder="Habit name...">
   <input id="nh-cat" class="inbox-input" style="height:40px;margin-bottom:8px" placeholder="Category (optional)...">
   <div style="margin-bottom:10px">
@@ -238,7 +238,7 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
   </div>
   <div class="inbox-actions">
     <span class="inbox-cancel" onclick="closeNewHabit()">Cancel</span>
-    <button class="inbox-send" onclick="submitNewHabit()">Create</button>
+    <button class="inbox-send" id="nh-submit" onclick="submitHabitForm()">Create</button>
   </div>
 </div>
 
@@ -324,16 +324,32 @@ function openNewProject(){
   setTimeout(function(){document.getElementById('np-name').focus();},50);
 }
 function closeNewProject(){document.getElementById('new-project-overlay').classList.remove('open');}
+var editingHabitIdx=null;
 function openNewHabit(){
+  editingHabitIdx=null;
+  document.getElementById('nh-title').textContent='NEW HABIT';
+  document.getElementById('nh-submit').textContent='Create';
   document.getElementById('nh-name').value='';
   document.getElementById('nh-cat').value='';
   document.querySelectorAll('.day-btn').forEach(function(b){b.classList.remove('sel');});
   document.getElementById('new-habit-overlay').classList.add('open');
   setTimeout(function(){document.getElementById('nh-name').focus();},50);
 }
+function openEditHabit(hi){
+  editingHabitIdx=hi;
+  var h=habits[hi];
+  document.getElementById('nh-title').textContent='EDIT HABIT';
+  document.getElementById('nh-submit').textContent='Update';
+  document.getElementById('nh-name').value=h.name;
+  document.getElementById('nh-cat').value=h.cat||'';
+  document.querySelectorAll('.day-btn').forEach(function(b){b.classList.remove('sel');});
+  h.days.forEach(function(d){var btn=document.getElementById('nb-'+d);if(btn)btn.classList.add('sel');});
+  document.getElementById('new-habit-overlay').classList.add('open');
+  setTimeout(function(){document.getElementById('nh-name').focus();},50);
+}
 function closeNewHabit(){document.getElementById('new-habit-overlay').classList.remove('open');}
 function toggleNbDay(d){document.getElementById('nb-'+d).classList.toggle('sel');}
-function submitNewHabit(){
+function submitHabitForm(){
   var name=document.getElementById('nh-name').value.trim();
   if(!name)return;
   var cat=document.getElementById('nh-cat').value.trim();
@@ -342,17 +358,25 @@ function submitNewHabit(){
     if(document.getElementById('nb-'+d).classList.contains('sel'))days.push(d);
   });
   closeNewHabit();
-  var tempId='__h'+Date.now();
   var todayAbbr=DAY_ABBR[new Date().getDay()];
-  habits.push({id:tempId,name:name,sub:cat+(days.length?' · '+days.join(' '):''),streak:0,done:false,today:days.indexOf(todayAbbr)!==-1,locked:false,note:'',yt:'',days:days});
-  renderHabits();
-  updateHabitProgress();
-  fetch(GAS_HABITS,{method:'POST',body:JSON.stringify({action:'addActivity',Name:name,Category:cat,Days:days.join(','),Status:'active'})})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d.success)habits.forEach(function(h){if(h.id===tempId)h.id=String(d.id);});
-    })
-    .catch(function(e){console.error('addHabit failed',e);});
+  if(editingHabitIdx!==null){
+    var h=habits[editingHabitIdx];
+    h.name=name;h.cat=cat;
+    h.sub=cat+(days.length?' · '+days.join(' '):'');
+    h.today=days.indexOf(todayAbbr)!==-1;h.days=days;
+    renderHabits();updateHabitProgress();
+    fetch(GAS_HABITS,{method:'POST',body:JSON.stringify({action:'updateActivity',id:h.id,Name:name,Category:cat,Days:days.join(',')})})
+      .then(function(r){return r.json();})
+      .catch(function(e){console.error('updateHabit failed',e);});
+  }else{
+    var tempId='__h'+Date.now();
+    habits.push({id:tempId,name:name,cat:cat,sub:cat+(days.length?' · '+days.join(' '):''),streak:0,done:false,today:days.indexOf(todayAbbr)!==-1,locked:false,note:'',yt:'',days:days});
+    renderHabits();updateHabitProgress();
+    fetch(GAS_HABITS,{method:'POST',body:JSON.stringify({action:'addActivity',Name:name,Category:cat,Days:days.join(','),Status:'active'})})
+      .then(function(r){return r.json();})
+      .then(function(d){if(d.success)habits.forEach(function(h){if(h.id===tempId)h.id=String(d.id);});})
+      .catch(function(e){console.error('addHabit failed',e);});
+  }
 }
 function submitNewProject(){
   var name=document.getElementById('np-name').value.trim();
@@ -494,7 +518,7 @@ function buildHabits(data){
   return (data.activities||[]).map(function(a){
     var days=a['Days']?a['Days'].split(',').map(function(d){return d.trim();}).filter(Boolean):[];
     return {
-      id:a['ID'],name:a['Name'],
+      id:a['ID'],name:a['Name'],cat:a['Category']||'',
       sub:(a['Category']||'')+(days.length?' · '+days.join(' '):''),
       streak:parseInt(streaks[a['ID']]||'0',10),
       done:!!logMap[a['ID']+'_'+todayStr],
@@ -512,7 +536,9 @@ function renderHabits(){
     if(!h.today&&!comingShown){comingShown=true;el.innerHTML+='<div class="day-lbl" style="margin-top:10px">COMING UP</div>';}
     var cc=h.today?'dark':'muted',nc=h.today?'dkv':'muv',sc=h.today?'dlbl':'mlbl';
     var ck=h.today?'<div class="ck'+(h.done?' ticked':'')+'" id="hck'+hi+'" onclick="event.stopPropagation();tickHabit('+hi+')"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></div>':'';
-    var exp='<div class="expand-body" id="heb'+hi+'"><div class="habit-note">'+(h.note||'')+'</div>'+(h.yt?'<a class="yt-link" href="'+h.yt+'" target="_blank"><div class="yt-icon"><svg viewBox="0 0 24 24"><path d="M10 8l6 4-6 4V8z"/></svg></div><span class="yt-text">Watch session on YouTube</span><span class="yt-arrow">↗</span></a>':'')+'</div>';
+    var gearSvg='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>';
+    var gear='<div style="display:flex;justify-content:flex-end;margin-top:8px"><div class="icon-btn" onclick="event.stopPropagation();openEditHabit('+hi+')">'+gearSvg+'</div></div>';
+    var exp='<div class="expand-body" id="heb'+hi+'"><div class="habit-note">'+(h.note||'')+'</div>'+(h.yt?'<a class="yt-link" href="'+h.yt+'" target="_blank"><div class="yt-icon"><svg viewBox="0 0 24 24"><path d="M10 8l6 4-6 4V8z"/></svg></div><span class="yt-text">Watch session on YouTube</span><span class="yt-arrow">↗</span></a>':'')+gear+'</div>';
     el.innerHTML+='<div class="card '+cc+'" id="h'+hi+'"><div class="card-top" onclick="document.getElementById(\'heb'+hi+'\').classList.toggle(\'open\')"><div class="mid"><div class="ctitle">'+h.name+'</div><div class="csub">'+h.sub+'</div></div><div class="cright"><div><div class="nsub '+sc+'">STREAK</div><div class="bnum '+nc+'">'+String(h.streak).padStart(2,'0')+'</div></div>'+ck+'</div></div>'+exp+'</div>';
   });
 }
