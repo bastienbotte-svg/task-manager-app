@@ -645,7 +645,10 @@ function renderHabitsGrid(data){
     if(!hObj)return;
     var shortName=a['Name'].toLowerCase().substring(0,7);
     var row='<div class="grid-rw"><div class="grid-act">'+shortName+'</div>';
-    var projectedStreak=hObj.streak;
+    // Base: strip scheduled+logged days up to and including today so past cells show historical numbers
+    var winLoggedSched=0;
+    if(hObj.freq==='weekly'){win.forEach(function(ds){if(ds>todayStr)return;var d=new Date(ds+'T00:00:00');if(hObj.days.indexOf(DAY_ABBR[d.getDay()])!==-1&&logMap[a['ID']+'_'+ds]===true)winLoggedSched++;});}
+    var projectedStreak=hObj.freq==='weekly'?hObj.streak-winLoggedSched:hObj.streak;
     win.forEach(function(dateStr){
       var isPast=dateStr<todayStr;
       var dow=new Date(dateStr+'T00:00:00').getDay();
@@ -653,12 +656,13 @@ function renderHabitsGrid(data){
       var logged=logMap[a['ID']+'_'+dateStr]===true;
       var cell;
       if(hObj.freq==='weekly'){
-        // Check logged first — extra sessions on non-scheduled days still show black
         if(logged){
-          if(isPast){
-            cell='<div class="gc dn"></div>';
+          var isSched=hObj.days.indexOf(dowAbbr)!==-1;
+          if(isSched) projectedStreak++;
+          if(isPast&&!isSched){
+            cell='<div class="gc dn"></div>'; // past extra: black, no number
           }else{
-            var badge=hObj.credits>0?'<span class="gc-cr">+'+hObj.credits+'</span>':'';
+            var badge=(!isPast&&hObj.credits>0)?'<span class="gc-cr">+'+hObj.credits+'</span>':'';
             cell='<div class="gc dn"><span class="gc-num">'+projectedStreak+'</span>'+badge+'</div>';
           }
         }else{
