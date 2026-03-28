@@ -302,6 +302,7 @@ var tabTitles  = {tasks:'TASK MANAGER',habits:'HABITS',finance:'FINANCE',grocery
 var inboxMessages = {tasks:[],habits:[],finance:[],grocery:[]};
 var projects   = [];
 var habits     = [];
+var habitsData = null;
 var currentCat = '';
 var finMonth   = new Date().getMonth() + 1;
 var finYear    = new Date().getFullYear();
@@ -611,7 +612,7 @@ function renderHabits(){
     if(!h.today&&!comingShown){comingShown=true;el.innerHTML+='<div class="day-lbl" style="margin-top:10px">COMING UP</div>';}
     var isDark=h.today||h.done;
     var cc=isDark?'dark':'muted',nc=isDark?'dkv':'muv',sc=isDark?'dlbl':'mlbl';
-    var ck=(h.today||h.freq==='count')?'<div class="ck'+(h.done?' ticked':'')+'" id="hck'+hi+'" onclick="event.stopPropagation();tickHabit('+hi+')"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></div>':'';
+    var ck=(h.today||h.freq==='count')?'<div class="ck'+(h.done?' ticked':'')+'" id="hck'+hi+'" onclick="event.stopPropagation();tickHabit('+hi+')">'+(h.done?'<svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg>':'')+'</div>':'';
     var creditsBadge=h.credits>0?'<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:'+(isDark?'#fff':'#555')+';margin-top:2px">+'+h.credits+'\u26a1</div>':'';
     var rightSide;
     if(h.freq==='count'){
@@ -647,6 +648,7 @@ function renderHabitsGrid(data){
     if(!hObj)return;
     var shortName=a['Name'].toLowerCase().substring(0,7);
     var row='<div class="grid-rw"><div class="grid-act">'+shortName+'</div>';
+    var projectedStreak=hObj.streak;
     win.forEach(function(dateStr){
       var isPast=dateStr<todayStr;
       var dow=new Date(dateStr+'T00:00:00').getDay();
@@ -657,14 +659,15 @@ function renderHabitsGrid(data){
         // Check logged first — extra sessions on non-scheduled days still show black
         if(logged){
           var badge=(!isPast&&hObj.credits>0)?'<span class="gc-cr">+'+hObj.credits+'</span>':'';
-          cell='<div class="gc dn"><span class="gc-num">'+hObj.streak+'</span>'+badge+'</div>';
+          cell='<div class="gc dn"><span class="gc-num">'+projectedStreak+'</span>'+badge+'</div>';
         }else{
           var scheduled=hObj.days.indexOf(dowAbbr)!==-1;
           if(!scheduled){cell='<div class="gc rs"></div>';}
           else if(isPast){cell='<div class="gc ms"></div>';}
           else{
+            projectedStreak++;
             var badge2=hObj.credits>0?'<span class="gc-cr">+'+hObj.credits+'</span>':'';
-            cell='<div class="gc pl"><span class="gc-num">'+(hObj.streak+1)+'</span>'+badge2+'</div>';
+            cell='<div class="gc pl"><span class="gc-num">'+projectedStreak+'</span>'+badge2+'</div>';
           }
         }
       }else if(hObj.freq==='count'){
@@ -690,18 +693,31 @@ function addExtraSession(hi){
   h.credits++;
   if(h.freq==='count'){h.weekCount++;h.sub=buildHabitSub(h);}
   renderHabits();
+  if(habitsData){
+    var todStr=todayISO();var found=false;
+    (habitsData.log||[]).forEach(function(r){if(String(r['Activity_ID'])===String(h.id)&&r['Date']===todStr){r['Completed']='TRUE';found=true;}});
+    if(!found)habitsData.log.push({'Activity_ID':h.id,'Date':todStr,'Completed':'TRUE'});
+    renderHabitsGrid(habitsData);
+  }
   updateHabitProgress();
   fetch(GAS_HABITS,{method:'POST',body:JSON.stringify({action:'logActivity',activity_id:h.id,date:todayISO(),completed:true})}).catch(function(){});
 }
 function tickHabit(hi){
   var h=habits[hi];
   h.done=!h.done;
-  var ck=document.getElementById('hck'+hi);if(ck)ck.classList.toggle('ticked',h.done);
   if(h.freq==='count'){
     h.weekCount=Math.max(0,h.weekCount+(h.done?1:-1));
     h.today=h.done;
     h.sub=buildHabitSub(h);
-    renderHabits();
+  } else if(h.freq==='weekly'&&h.today){
+    h.streak=Math.max(0,h.streak+(h.done?1:-1));
+  }
+  renderHabits();
+  if(habitsData){
+    var todStr=todayISO();var found=false;
+    (habitsData.log||[]).forEach(function(r){if(String(r['Activity_ID'])===String(h.id)&&r['Date']===todStr){r['Completed']=h.done?'TRUE':'FALSE';found=true;}});
+    if(!found&&h.done)habitsData.log.push({'Activity_ID':h.id,'Date':todStr,'Completed':'TRUE'});
+    renderHabitsGrid(habitsData);
   }
   updateHabitProgress();
   fetch(GAS_HABITS,{method:'POST',body:JSON.stringify({action:'logActivity',activity_id:h.id,date:todayISO(),completed:h.done})}).catch(function(){});
@@ -810,9 +826,10 @@ function loadAll(){
     // Habits
     if(res[1].error){setError('habit-list','Habits unavailable: '+res[1].error);}
     else{
-      habits=buildHabits(res[1]);
+      habitsData=res[1];
+      habits=buildHabits(habitsData);
       renderHabits();
-      renderHabitsGrid(res[1]);
+      renderHabitsGrid(habitsData);
       var hEl=document.getElementById('h-bar'),N=segsForEl(hEl);hEl._n=N;
       updateHabitProgress();
     }
