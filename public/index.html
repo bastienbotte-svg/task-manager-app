@@ -610,12 +610,12 @@ function renderHabits(){
     var isDark=h.today||h.done;
     var cc=isDark?'dark':'muted',nc=isDark?'dkv':'muv',sc=isDark?'dlbl':'mlbl';
     var ck=(h.today||h.freq==='count')?'<div class="ck'+(h.done?' ticked':'')+'" id="hck'+hi+'" onclick="event.stopPropagation();tickHabit('+hi+')">'+(h.done?'<svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg>':'')+'</div>':'';
-    var creditsBadge=h.credits>0?'<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:'+(isDark?'#fff':'#555')+';margin-top:2px">+'+h.credits+'\u26a1</div>':'';
+    var bufferDiv=h.credits>0?'<div style="text-align:right"><div class="nsub '+sc+'">BUFFER</div><div class="bnum '+nc+'">+'+h.credits+'<span style="color:#fff">\u26a1</span></div></div>':'';
     var rightSide;
     if(h.freq==='count'){
-      rightSide='<div style="text-align:right"><div class="nsub '+sc+'">THIS WEEK</div><div class="bnum '+nc+'">'+String(h.weekCount).padStart(2,'0')+'/'+h.target+'</div>'+creditsBadge+'</div>'+ck;
+      rightSide=bufferDiv+'<div style="text-align:right"><div class="nsub '+sc+'">THIS WEEK</div><div class="bnum '+nc+'">'+String(h.weekCount).padStart(2,'0')+'/'+h.target+'</div></div>'+ck;
     }else{
-      rightSide='<div><div class="nsub '+sc+'">STREAK</div><div class="bnum '+nc+'">'+String(h.streak).padStart(2,'0')+'</div>'+creditsBadge+'</div>'+ck;
+      rightSide=bufferDiv+'<div><div class="nsub '+sc+'">STREAK</div><div class="bnum '+nc+'">'+String(h.streak).padStart(2,'0')+'</div></div>'+ck;
     }
     var gear='<div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px"><div class="icon-btn" onclick="event.stopPropagation();addExtraSession('+hi+')" title="Log extra session"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="icon-btn" onclick="event.stopPropagation();openEditHabit('+hi+')">'+gearSvg+'</div></div>';
     var exp='<div class="expand-body" id="heb'+hi+'"><div class="habit-note">'+(h.note||'')+'</div>'+(h.yt?'<a class="yt-link" href="'+h.yt+'" target="_blank"><div class="yt-icon"><svg viewBox="0 0 24 24"><path d="M10 8l6 4-6 4V8z"/></svg></div><span class="yt-text">Watch session on YouTube</span><span class="yt-arrow">↗</span></a>':'')+gear+'</div>';
