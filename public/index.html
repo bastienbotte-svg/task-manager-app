@@ -177,9 +177,6 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 <!-- TAB: HABITS -->
 <div class="tab-view" id="view-habits">
   <div class="scroll-area"><div class="content">
-    <div class="prog-row"><span class="prog-label">WEEKLY PROGRESS</span><span class="prog-label" id="h-pct-lbl">40%</span></div>
-    <div class="weekly-bar" id="h-bar"></div>
-    <div class="prog-meta"><span id="h-done-lbl"><b>02</b> COMPLETED</span><span id="h-rem-lbl"><b>03</b> REMAINING</span></div>
     <div class="day-lbl">TODAY — WEDNESDAY</div>
     <div id="habit-list"></div>
     <div class="sec-lbl">CONSISTENCY GRID</div>
@@ -658,8 +655,12 @@ function renderHabitsGrid(data){
       if(hObj.freq==='weekly'){
         // Check logged first — extra sessions on non-scheduled days still show black
         if(logged){
-          var badge=(!isPast&&hObj.credits>0)?'<span class="gc-cr">+'+hObj.credits+'</span>':'';
-          cell='<div class="gc dn"><span class="gc-num">'+projectedStreak+'</span>'+badge+'</div>';
+          if(isPast){
+            cell='<div class="gc dn"></div>';
+          }else{
+            var badge=hObj.credits>0?'<span class="gc-cr">+'+hObj.credits+'</span>':'';
+            cell='<div class="gc dn"><span class="gc-num">'+projectedStreak+'</span>'+badge+'</div>';
+          }
         }else{
           var scheduled=hObj.days.indexOf(dowAbbr)!==-1;
           if(!scheduled){cell='<div class="gc rs"></div>';}
@@ -722,17 +723,7 @@ function tickHabit(hi){
   updateHabitProgress();
   fetch(GAS_HABITS,{method:'POST',body:JSON.stringify({action:'logActivity',activity_id:h.id,date:todayISO(),completed:h.done})}).catch(function(){});
 }
-function updateHabitProgress(){
-  var todayH=habits.filter(function(h){return h.today&&!h.locked;});
-  var done=todayH.filter(function(h){return h.done;}).length,total=todayH.length||1;
-  var pct=Math.round(done/total*100);
-  var hEl=document.getElementById('h-bar'),N=hEl._n||30,f=Math.round(pct/100*N),h='';
-  for(var i=0;i<N;i++)h+='<div class="wb-s'+(i<f?' fl':'')+'"></div>';
-  hEl.innerHTML=h;
-  document.getElementById('h-pct-lbl').textContent=pct+'%';
-  document.getElementById('h-done-lbl').innerHTML='<b>'+String(done).padStart(2,'0')+'</b> COMPLETED';
-  document.getElementById('h-rem-lbl').innerHTML='<b>'+String(total-done).padStart(2,'0')+'</b> REMAINING';
-}
+function updateHabitProgress(){}
 
 /* ── FINANCE ── */
 function renderFin(data){
