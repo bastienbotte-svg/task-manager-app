@@ -53,8 +53,6 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .drag-handle{width:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:13px;letter-spacing:-1px;cursor:grab;touch-action:none;padding-right:4px}
 .fin-ghost{position:fixed;z-index:200;pointer-events:none;box-shadow:0 6px 24px rgba(0,0,0,0.13);opacity:0.88}
 .fin-dragging{opacity:0.25}
-.fbo-toggle{width:36px;height:20px;border-radius:10px;background:#e0e0de;cursor:pointer;position:relative;flex-shrink:0;transition:background 0.18s}
-.fbo-toggle-knob{position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left 0.18s}
 .card{background:#fff;border-radius:14px;padding:13px 14px;margin-bottom:8px;overflow:hidden;user-select:none}
 .card.solid{border:1.5px solid #e0e0de}
 .card.dashed{border:1.5px dashed #ddd}
@@ -285,14 +283,32 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 
 <!-- FIN BUDGET OVERLAY -->
 <div class="inbox-overlay" id="fin-budget-overlay">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+  <div style="margin-bottom:10px">
     <div class="inbox-tag" id="fbo-title" style="margin-bottom:0">BUDGET</div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa" id="fbo-year-lbl">ALL 2026</div>
-      <div class="fbo-toggle" id="fbo-toggle" onclick="toggleFinAllYear()"><div class="fbo-toggle-knob" id="fbo-knob"></div></div>
+  </div>
+  <div class="seg-tabs-main" style="margin-bottom:10px">
+    <div class="seg-btn active" id="fbo-mode-annual" onclick="setFinBudgetMode('annual')">ANNUAL</div>
+    <div class="seg-btn" id="fbo-mode-monthly" onclick="setFinBudgetMode('monthly')">MONTHLY</div>
+  </div>
+  <div id="fbo-annual-wrap">
+    <input class="inbox-input" id="fbo-input" type="number" inputmode="decimal" placeholder="0" style="height:40px">
+  </div>
+  <div id="fbo-monthly-wrap" style="display:none">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;margin-bottom:2px">JAN</div><input id="fbo-m1" type="number" inputmode="decimal" placeholder="0" style="width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;border:1.5px solid #e0e0de;border-radius:8px;padding:6px 8px;outline:none"></div>
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;margin-bottom:2px">FEB</div><input id="fbo-m2" type="number" inputmode="decimal" placeholder="0" style="width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;border:1.5px solid #e0e0de;border-radius:8px;padding:6px 8px;outline:none"></div>
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;margin-bottom:2px">MAR</div><input id="fbo-m3" type="number" inputmode="decimal" placeholder="0" style="width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;border:1.5px solid #e0e0de;border-radius:8px;padding:6px 8px;outline:none"></div>
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;margin-bottom:2px">APR</div><input id="fbo-m4" type="number" inputmode="decimal" placeholder="0" style="width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;border:1.5px solid #e0e0de;border-radius:8px;padding:6px 8px;outline:none"></div>
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;margin-bottom:2px">MAY</div><input id="fbo-m5" type="number" inputmode="decimal" placeholder="0" style="width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;border:1.5px solid #e0e0de;border-radius:8px;padding:6px 8px;outline:none"></div>
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;margin-bottom:2px">JUN</div><input id="fbo-m6" type="number" inputmode="decimal" placeholder="0" style="width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;border:1.5px solid #e0e0de;border-radius:8px;padding:6px 8px;outline:none"></div>
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;margin-bottom:2px">JUL</div><input id="fbo-m7" type="number" inputmode="decimal" placeholder="0" style="width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;border:1.5px solid #e0e0de;border-radius:8px;padding:6px 8px;outline:none"></div>
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;margin-bottom:2px">AUG</div><input id="fbo-m8" type="number" inputmode="decimal" placeholder="0" style="width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;border:1.5px solid #e0e0de;border-radius:8px;padding:6px 8px;outline:none"></div>
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;margin-bottom:2px">SEP</div><input id="fbo-m9" type="number" inputmode="decimal" placeholder="0" style="width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;border:1.5px solid #e0e0de;border-radius:8px;padding:6px 8px;outline:none"></div>
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;margin-bottom:2px">OCT</div><input id="fbo-m10" type="number" inputmode="decimal" placeholder="0" style="width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;border:1.5px solid #e0e0de;border-radius:8px;padding:6px 8px;outline:none"></div>
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;margin-bottom:2px">NOV</div><input id="fbo-m11" type="number" inputmode="decimal" placeholder="0" style="width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;border:1.5px solid #e0e0de;border-radius:8px;padding:6px 8px;outline:none"></div>
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;margin-bottom:2px">DEC</div><input id="fbo-m12" type="number" inputmode="decimal" placeholder="0" style="width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;border:1.5px solid #e0e0de;border-radius:8px;padding:6px 8px;outline:none"></div>
     </div>
   </div>
-  <input class="inbox-input" id="fbo-input" type="number" inputmode="decimal" placeholder="0" style="height:40px">
   <div class="inbox-actions">
     <span class="inbox-cancel" onclick="closeFinBudget()">Cancel</span>
     <button class="inbox-send" onclick="saveFinBudget()">Save</button>
@@ -855,14 +871,13 @@ function changeFinMonth(delta){
 }
 
 /* ── FIN BUDGET OVERLAY ── */
+var finBudgetMode='annual';
 function openFinBudget(name,type,currentBudget){
   editingFinBudget={name:name,type:type};
-  finAllYear=false;
   document.getElementById('fbo-title').textContent='BUDGET \u2014 '+name.toUpperCase();
-  document.getElementById('fbo-year-lbl').textContent='ALL '+finYear;
   document.getElementById('fbo-input').value=currentBudget||'';
-  document.getElementById('fbo-toggle').style.background='#e0e0de';
-  document.getElementById('fbo-knob').style.left='3px';
+  for(var m=1;m<=12;m++){var el=document.getElementById('fbo-m'+m);if(el)el.value=currentBudget||'';}
+  setFinBudgetMode('annual');
   document.getElementById('fin-budget-overlay').classList.add('open');
   setTimeout(function(){document.getElementById('fbo-input').focus();},50);
 }
@@ -870,26 +885,39 @@ function closeFinBudget(){
   document.getElementById('fin-budget-overlay').classList.remove('open');
   editingFinBudget=null;
 }
-function toggleFinAllYear(){
-  finAllYear=!finAllYear;
-  document.getElementById('fbo-toggle').style.background=finAllYear?'#111':'#e0e0de';
-  document.getElementById('fbo-knob').style.left=finAllYear?'19px':'3px';
+function setFinBudgetMode(mode){
+  finBudgetMode=mode;
+  document.getElementById('fbo-mode-annual').classList.toggle('active',mode==='annual');
+  document.getElementById('fbo-mode-monthly').classList.toggle('active',mode==='monthly');
+  document.getElementById('fbo-annual-wrap').style.display=mode==='annual'?'block':'none';
+  document.getElementById('fbo-monthly-wrap').style.display=mode==='monthly'?'block':'none';
 }
 function saveFinBudget(){
   if(!editingFinBudget)return;
-  var amount=parseFloat(document.getElementById('fbo-input').value);
-  if(isNaN(amount)||amount<0)return;
   var name=editingFinBudget.name,type=editingFinBudget.type;
-  closeFinBudget();
-  // Optimistic update
-  finBudMap[name]=amount;
-  var arr=type==='EXPENSE'?finExpenses:finDeposits;
-  arr.forEach(function(d){if(d.name===name){d.budget=amount;d.pct=amount>0?Math.round(d.tracked/amount*100):0;}});
-  if(type==='EXPENSE')renderFinExpenses();else renderFinDeposits();
-  if(finAllYear){
+  if(finBudgetMode==='annual'){
+    var amount=parseFloat(document.getElementById('fbo-input').value);
+    if(isNaN(amount)||amount<0)return;
+    closeFinBudget();
+    finBudMap[name]=amount;
+    var arr=type==='EXPENSE'?finExpenses:finDeposits;
+    arr.forEach(function(d){if(d.name===name){d.budget=amount;d.pct=amount>0?Math.round(d.tracked/amount*100):0;}});
+    if(type==='EXPENSE')renderFinExpenses();else renderFinDeposits();
     fetch(GAS_FINANCE,{method:'POST',body:JSON.stringify({action:'setBudgetAllYear',category:name,year:finYear,amount:amount,type:type.toLowerCase()})}).catch(function(){});
   }else{
-    fetch(GAS_FINANCE,{method:'POST',body:JSON.stringify({action:'updateBudget',category:name,month:finMonth,year:finYear,amount:amount,type:type.toLowerCase()})}).catch(function(){});
+    var amounts=[];
+    for(var m=1;m<=12;m++){
+      var v=parseFloat(document.getElementById('fbo-m'+m).value);
+      if(isNaN(v)||v<0)return;
+      amounts.push(v);
+    }
+    var curAmount=amounts[finMonth-1];
+    closeFinBudget();
+    finBudMap[name]=curAmount;
+    var arr2=type==='EXPENSE'?finExpenses:finDeposits;
+    arr2.forEach(function(d){if(d.name===name){d.budget=curAmount;d.pct=curAmount>0?Math.round(d.tracked/curAmount*100):0;}});
+    if(type==='EXPENSE')renderFinExpenses();else renderFinDeposits();
+    fetch(GAS_FINANCE,{method:'POST',body:JSON.stringify({action:'setMonthlyBudgets',category:name,year:finYear,amounts:amounts,type:type.toLowerCase()})}).catch(function(){});
   }
 }
 
