@@ -198,7 +198,10 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
         <div style="text-align:center"><div class="ov-lbl">EXPENSES</div><div class="ov-val" id="ov-exp">—</div></div>
         <div style="text-align:right"><div class="ov-lbl">BALANCE</div><div class="ov-val pos" id="ov-bal">—</div></div>
       </div>
-      <div class="ov-bar" id="fin-bar"></div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:7px">
+        <div class="ov-bar" id="fin-bar" style="margin-top:0;flex:1"></div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa;flex-shrink:0" id="ov-pct">—</div>
+      </div>
     </div>
     <div class="seg-tabs-main">
       <div class="seg-btn active" onclick="switchFinTab('exp',this)">EXPENSES</div>
@@ -363,7 +366,7 @@ function switchTab(tab,el){
     setTimeout(function(){
       finExpenses.forEach(function(d,i){var b=document.getElementById('fc'+i+'_bar');if(!b)return;var N=segsForEl(b);b._n=N;b.innerHTML=mkBar(d.pct,N);});
       finDeposits.forEach(function(d,i){var b=document.getElementById('fcd'+i+'_bar');if(!b)return;var N=segsForEl(b);b._n=N;b.innerHTML=mkBar(d.pct,N);});
-      var ovEl=document.getElementById('fin-bar');if(ovEl){var ovN=segsForEl(ovEl);ovEl._n=ovN;var ovPct=ovEl._pct||0;var ovH='';for(var i=0;i<ovN;i++)ovH+='<div class="ov-s'+(i<Math.round(ovPct/100*ovN)?' f':'e')+'"></div>';ovEl.innerHTML=ovH;}
+      var ovEl=document.getElementById('fin-bar');if(ovEl){var ovN=segsForEl(ovEl);ovEl._n=ovN;var ovPct=ovEl._pct||0;var ovH='';for(var i=0;i<ovN;i++)ovH+='<div class="ov-s'+(i<Math.round(ovPct/100*ovN)?' f':'e')+'"></div>';ovEl.innerHTML=ovH;var pctEl=document.getElementById('ov-pct');if(pctEl)pctEl.textContent=ovPct+'%';}
     },0);
   }
 }
@@ -813,6 +816,7 @@ function renderFin(data){
   document.getElementById('ov-bal').className='ov-val'+(bal>=0?' pos':'');
   var ovEl=document.getElementById('fin-bar'),ovN=segsForEl(ovEl),ovPct=totalDep>0?Math.round(totalExp/totalDep*100):0;
   ovEl._n=ovN;ovEl._pct=ovPct;var ovH='';for(var i=0;i<ovN;i++)ovH+='<div class="ov-s'+(i<Math.round(ovPct/100*ovN)?' f':'e')+'"></div>';ovEl.innerHTML=ovH;
+  var pctEl=document.getElementById('ov-pct');if(pctEl)pctEl.textContent=ovPct+'%';
 }
 function renderFinExpenses(){
   var eH='';finExpenses.forEach(function(d,i){eH+=mkFinCard(d,i,false);});
