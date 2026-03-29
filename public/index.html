@@ -880,7 +880,7 @@ function openFinBudget(name,type,currentBudget){
   editingFinBudget={name:name,type:type};
   document.getElementById('fbo-title').textContent='BUDGET \u2014 '+name.toUpperCase();
   document.getElementById('fbo-input').value=currentBudget||'';
-  for(var m=1;m<=12;m++){var el=document.getElementById('fbo-m'+m);if(el)el.value=currentBudget||'';}
+  for(var m=1;m<=12;m++){var el=document.getElementById('fbo-m'+m);if(el)el.value=currentBudget!=null?currentBudget:'';}
   setFinBudgetMode('annual');
   document.getElementById('fin-budget-overlay').classList.add('open');
   setTimeout(function(){document.getElementById('fbo-input').focus();},50);
@@ -911,8 +911,8 @@ function saveFinBudget(){
   }else{
     var amounts=[];
     for(var m=1;m<=12;m++){
-      var v=parseFloat(document.getElementById('fbo-m'+m).value);
-      if(isNaN(v)||v<0)return;
+      var v=parseFloat(document.getElementById('fbo-m'+m).value)||0;
+      if(v<0)return;
       amounts.push(v);
     }
     var curAmount=amounts[finMonth-1];
