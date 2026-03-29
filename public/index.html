@@ -343,6 +343,13 @@ function switchTab(tab,el){
   document.getElementById('cat-strip').style.display=tab==='tasks'?'flex':'none';
   var io=document.getElementById('inbox-overlay');
   if(io.classList.contains('open'))io.classList.remove('open');
+  if(tab==='finance'){
+    setTimeout(function(){
+      finExpenses.forEach(function(d,i){var b=document.getElementById('fc'+i+'_bar');if(!b)return;var N=segsForEl(b);b._n=N;b.innerHTML=mkBar(d.pct,N);});
+      finDeposits.forEach(function(d,i){var b=document.getElementById('fcd'+i+'_bar');if(!b)return;var N=segsForEl(b);b._n=N;b.innerHTML=mkBar(d.pct,N);});
+      var ovEl=document.getElementById('fin-bar');if(ovEl){var ovN=segsForEl(ovEl);ovEl._n=ovN;var ovPct=ovEl._pct||0;var ovH='';for(var i=0;i<ovN;i++)ovH+='<div class="ov-s'+(i<Math.round(ovPct/100*ovN)?' f':'e')+'"></div>';ovEl.innerHTML=ovH;}
+    },0);
+  }
 }
 function selectCat(el,cat){
   document.querySelectorAll('.cat-t').forEach(function(t){t.classList.remove('active');});
@@ -789,7 +796,7 @@ function renderFin(data){
   document.getElementById('ov-bal').textContent=(bal<0?'-':'')+Math.abs(bal).toFixed(2)+'€';
   document.getElementById('ov-bal').className='ov-val'+(bal>=0?' pos':'');
   var ovEl=document.getElementById('fin-bar'),ovN=segsForEl(ovEl),ovPct=totalDep>0?Math.round(totalExp/totalDep*100):0;
-  ovEl._n=ovN;var ovH='';for(var i=0;i<ovN;i++)ovH+='<div class="ov-s'+(i<Math.round(ovPct/100*ovN)?' f':'e')+'"></div>';ovEl.innerHTML=ovH;
+  ovEl._n=ovN;ovEl._pct=ovPct;var ovH='';for(var i=0;i<ovN;i++)ovH+='<div class="ov-s'+(i<Math.round(ovPct/100*ovN)?' f':'e')+'"></div>';ovEl.innerHTML=ovH;
 }
 function renderFinExpenses(){
   var eH='';finExpenses.forEach(function(d,i){eH+=mkFinCard(d,i,false);});
