@@ -138,11 +138,11 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .ov-lbl{font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;letter-spacing:0.06em;margin-bottom:2px}
 .ov-val{font-family:'Share Tech Mono',monospace;font-size:15px;color:#111}
 .ov-val.pos{color:#1D9E75}
-.ov-bar{height:10px;border-radius:2px;background:#e8e8e3;overflow:hidden}
-.ov-bar-fill{height:100%;background:#555}
-.fin-pbar{height:10px;border-radius:2px;background:#e8e8e3;overflow:hidden;margin-top:7px}
-.fin-pbar-fill{height:100%;border-radius:2px;background:#555}
-.fin-pbar-fill.ovr{background:#D85A30}
+.ov-bar{position:relative;height:10px;border-radius:2px;overflow:hidden;background:repeating-linear-gradient(to right,#e8e8e3 0,#e8e8e3 4px,transparent 4px,transparent 6px)}
+.ov-bar-fill{position:absolute;top:0;left:0;height:100%;background:repeating-linear-gradient(to right,#555 0,#555 4px,transparent 4px,transparent 6px)}
+.fin-pbar{position:relative;height:10px;border-radius:2px;overflow:hidden;margin-top:7px;background:repeating-linear-gradient(to right,#e8e8e3 0,#e8e8e3 4px,transparent 4px,transparent 6px)}
+.fin-pbar-fill{position:absolute;top:0;left:0;height:100%;background:repeating-linear-gradient(to right,#555 0,#555 4px,transparent 4px,transparent 6px)}
+.fin-pbar-fill.ovr{background:repeating-linear-gradient(to right,#D85A30 0,#D85A30 4px,transparent 4px,transparent 6px)}
 .seg-tabs-main{display:flex;background:#f5f5f3;border-radius:9px;padding:3px;gap:2px;margin-bottom:12px}
 .seg-btn{flex:1;font-family:'Share Tech Mono',monospace;font-size:10px;color:#aaa;padding:6px 2px;text-align:center;border-radius:7px;cursor:pointer}
 .seg-btn.active{background:#111;color:#fff}
