@@ -652,8 +652,10 @@ function buildHabits(data){
 function renderHabits(){
   var el=document.getElementById('habit-list');el.innerHTML='';
   var comingShown=false;
+  habits.sort(function(a,b){if(a.locked!==b.locked)return a.locked?1:-1;if(a.today!==b.today)return a.today?-1:1;return 0;});
   var gearSvg='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>';
   habits.forEach(function(h,hi){
+    if(!h.today&&h.freq==='interval'&&h.daysUntilDue>7)return;
     if(h.locked){el.innerHTML+='<div class="card dashed"><div class="card-top"><div class="mid"><div class="ctitle">'+h.name+'</div><div class="csub">'+h.sub+'</div></div><div class="cright"><div><div class="nsub mlbl">UNLOCK AT</div><div class="bnum fnt">15</div></div></div></div></div>';return;}
     if(!h.today&&!comingShown){comingShown=true;el.innerHTML+='<div class="day-lbl" style="margin-top:10px">COMING UP</div>';}
     var isDark=h.today||h.done;
