@@ -160,6 +160,7 @@ function addMeal(body) {
 }
 
 // setMenuItem — upserts a row in Menu by week_start + day + Person + Meal_Type.
+// Also ensures the meal name exists in the Meals sheet (canonical list).
 // Required body fields: week_start (yyyy-MM-dd), day (e.g. 'Monday'), Person, Meal_Type, Meal_Name
 function setMenuItem(body) {
   var ss    = getSpreadsheet();
@@ -170,9 +171,35 @@ function setMenuItem(body) {
   var day       = String(body.day        || '').trim();
   var person    = String(body.Person     || '').trim();
   var mealType  = String(body.Meal_Type  || '').trim();
+  var mealName  = String(body.Meal_Name  || '').trim();
 
   if (!weekStart || !day) {
     return { error: 'Missing required fields: week_start, day' };
+  }
+
+  // Ensure meal name exists in Meals sheet; resolve Meal_ID
+  if (mealName) {
+    var mealsSheet = ss.getSheetByName('Meals');
+    if (mealsSheet) {
+      var allMeals   = sheetToObjects(mealsSheet);
+      var mealEntry  = null;
+      allMeals.forEach(function(r) {
+        if (r['Name'].toLowerCase() === mealName.toLowerCase()) mealEntry = r;
+      });
+      if (mealEntry) {
+        body['Meal_ID'] = mealEntry['ID'];
+      } else {
+        var newMealId   = getNextId(mealsSheet);
+        var mealHeaders = getHeaders(mealsSheet);
+        var mealRow     = mealHeaders.map(function(h) {
+          if (h === 'ID')   return String(newMealId);
+          if (h === 'Name') return mealName;
+          return '';
+        });
+        mealsSheet.appendRow(mealRow);
+        body['Meal_ID'] = String(newMealId);
+      }
+    }
   }
 
   var headers  = getHeaders(sheet);
@@ -213,6 +240,42 @@ function setMenuItem(body) {
   });
   sheet.appendRow(row);
   return { success: true, created: true, id: newId };
+}
+
+// backfillMeals — populates the Meals sheet from unique Meal_Name values already in Menu.
+// Run once from the GAS editor after deploying this update.
+function backfillMeals() {
+  var ss         = getSpreadsheet();
+  var menuSheet  = ss.getSheetByName('Menu');
+  var mealsSheet = ss.getSheetByName('Meals');
+  if (!menuSheet || !mealsSheet) return 'Missing sheets';
+
+  var menuRows   = sheetToObjects(menuSheet);
+  var mealRows   = sheetToObjects(mealsSheet);
+  var mealHeaders = getHeaders(mealsSheet);
+
+  // Build map of names already in Meals (lowercase → ID)
+  var existing = {};
+  mealRows.forEach(function(r) {
+    if (r['Name']) existing[r['Name'].toLowerCase()] = r['ID'];
+  });
+
+  var added = 0;
+  menuRows.forEach(function(r) {
+    var name = (r['Meal_Name'] || '').trim();
+    if (!name || existing[name.toLowerCase()]) return;
+    var newId = getNextId(mealsSheet);
+    var row   = mealHeaders.map(function(h) {
+      if (h === 'ID')   return String(newId);
+      if (h === 'Name') return name;
+      return '';
+    });
+    mealsSheet.appendRow(row);
+    existing[name.toLowerCase()] = String(newId);
+    added++;
+  });
+
+  return 'Backfilled ' + added + ' meal(s). Total in Meals: ' + (mealRows.length + added);
 }
 
 // updateShoppingItem — finds a Shopping_List row by item + week_start and updates Checked.
