@@ -152,6 +152,11 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .grocery-icon svg{width:22px;height:22px;stroke:#ccc;fill:none;stroke-width:1.5}
 .grocery-msg{font-family:'Share Tech Mono',monospace;font-size:11px;color:#bbb;line-height:1.7}
 .grocery-sub{font-family:'Share Tech Mono',monospace;font-size:9px;color:#ddd;margin-top:8px}
+.gr-empty{font-family:'Share Tech Mono',monospace;font-size:11px;color:#ccc;margin-top:2px}
+.gr-ing{font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa;margin-top:3px;line-height:1.5}
+.gr-hist-row{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+.gr-hist-tag{font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;flex-shrink:0;letter-spacing:0.04em}
+.gr-hist-name{font-family:'Share Tech Mono',monospace;font-size:11px;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .splash{position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.5s ease}
 .splash.hidden{opacity:0;pointer-events:none}
 .splash img{width:60%;max-width:260px;object-fit:contain}
@@ -218,11 +223,20 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 
 <!-- TAB: GROCERY -->
 <div class="tab-view" id="view-grocery">
-  <div class="grocery-placeholder">
-    <div class="grocery-icon"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></div>
-    <div class="grocery-msg">I am cooking,<br>I will be there soon</div>
-    <div class="grocery-sub">Weekly menu coming up</div>
-  </div>
+  <div class="scroll-area"><div class="content">
+    <div class="month-nav">
+      <div class="nav-btn" onclick="groceryPrevDay()"><svg viewBox="0 0 12 12"><polyline points="8,2 4,6 8,10" fill="none" stroke="#888" stroke-width="2"/></svg></div>
+      <span class="month-lbl" id="gr-date-lbl">TODAY</span>
+      <div class="nav-btn" onclick="groceryNextDay()"><svg viewBox="0 0 12 12"><polyline points="4,2 8,6 4,10" fill="none" stroke="#888" stroke-width="2"/></svg></div>
+    </div>
+    <div class="sec-lbl">MAIN</div>
+    <div class="ov-card" id="gr-main-dinner"></div>
+    <div class="sec-lbl">LUCAS</div>
+    <div class="ov-card" id="gr-lucas-lunch"></div>
+    <div class="ov-card" id="gr-lucas-dinner"></div>
+    <div class="sec-lbl" style="margin-top:4px">THIS WEEK</div>
+    <div id="gr-history"></div>
+  </div></div>
 </div>
 
 <!-- NEW / EDIT HABIT OVERLAY -->
@@ -317,6 +331,27 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
   <div class="inbox-actions">
     <span class="inbox-cancel" onclick="closeFinBudget()">Cancel</span>
     <button class="inbox-send" onclick="saveFinBudget()">Save</button>
+  </div>
+</div>
+
+<!-- LOG MEAL OVERLAY -->
+<div class="inbox-overlay" id="gr-log-overlay">
+  <div class="inbox-tag" id="gr-log-title">LOG MEAL</div>
+  <input id="gr-log-input" class="inbox-input" style="height:40px" placeholder="Meal name...">
+  <div class="inbox-actions">
+    <span class="inbox-cancel" onclick="closeLogMeal()">Cancel</span>
+    <button class="inbox-send" onclick="saveLogMeal()">Save</button>
+  </div>
+</div>
+
+<!-- INGREDIENTS OVERLAY -->
+<div class="inbox-overlay" id="gr-ing-overlay">
+  <div class="inbox-tag">INGREDIENTS</div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:#111;margin-bottom:8px;letter-spacing:0.03em" id="gr-ing-meal-name"></div>
+  <input id="gr-ing-input" class="inbox-input" style="height:40px" placeholder="e.g. chicken, pasta, cream">
+  <div class="inbox-actions">
+    <span class="inbox-cancel" onclick="closeIngredients()">Cancel</span>
+    <button class="inbox-send" onclick="saveIngredients()">Save</button>
   </div>
 </div>
 
@@ -544,6 +579,7 @@ function mkBar(pct,N){var o=pct>100,f=Math.round(Math.min(pct,100)/100*N),h='';f
 var MONO="font-family:'Share Tech Mono',monospace;font-size:10px;padding:20px 0";
 function setLoading(id){var el=document.getElementById(id);if(el)el.innerHTML='<div style="'+MONO+';color:#ccc">Loading...</div>';}
 function setError(id,msg){var el=document.getElementById(id);if(el)el.innerHTML='<div style="'+MONO+';color:#D85A30">'+msg+'</div>';}
+function showToast(msg){var t=document.createElement('div');t.style.cssText="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 18px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;z-index:9999;white-space:nowrap";t.textContent=msg;document.body.appendChild(t);setTimeout(function(){t.remove();},4000);}
 
 /* ── TASKS ── */
 function buildProjects(data){
@@ -756,7 +792,7 @@ function addExtraSession(hi){
     renderHabitsGrid(habitsData);
   }
   updateHabitProgress();
-  fetch(GAS_HABITS,{method:'POST',body:JSON.stringify({action:'logActivity',activity_id:h.id,date:todayISO(),completed:true})}).catch(function(){});
+  fetch(GAS_HABITS,{method:'POST',body:JSON.stringify({action:'logActivity',activity_id:h.id,date:todayISO(),completed:true})}).then(function(r){return r.json();}).then(function(d){if(d&&d.error)showToast('Save failed: '+d.error);}).catch(function(){showToast('Extra session not saved — check connection');});
 }
 function tickHabit(hi){
   var h=habits[hi];
@@ -1000,6 +1036,177 @@ function endFinDrag(e){
   }
 }
 
+/* ── GROCERY ── */
+var GR_DAY_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+var GR_DAY_SHORT = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+var GR_MON_SHORT = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+var groceryDate  = (function(){ var d=new Date(); d.setHours(0,0,0,0); return d; })();
+var groceryWeekData = null;
+var grLogCtx = null;
+var grIngCtx = null;
+
+function grWeekStart(d) {
+  var dt  = new Date(d.getTime());
+  var dow = dt.getDay();
+  dt.setDate(dt.getDate() + (dow===0 ? -6 : 1-dow));
+  return [dt.getFullYear(), ('0'+(dt.getMonth()+1)).slice(-2), ('0'+dt.getDate()).slice(-2)].join('-');
+}
+
+function loadGrocery() {
+  var ws = grWeekStart(groceryDate);
+  fetch(GAS_GROCERY+'?week_start='+ws)
+    .then(function(r){return r.json();})
+    .catch(function(){return{error:'fetch failed'};})
+    .then(function(data){
+      if(!data.error) groceryWeekData=data;
+      renderGrocery();
+    });
+}
+
+function renderGrocery() {
+  var today=new Date(); today.setHours(0,0,0,0);
+  var isToday=groceryDate.getTime()===today.getTime();
+  var dow=groceryDate.getDay();
+  var lbl=(isToday?'TODAY — ':'')+GR_DAY_SHORT[dow]+' '+groceryDate.getDate()+' '+GR_MON_SHORT[groceryDate.getMonth()];
+  document.getElementById('gr-date-lbl').textContent=lbl;
+  var menu=groceryWeekData&&groceryWeekData.menu?groceryWeekData.menu:[];
+  var dayFull=GR_DAY_FULL[dow];
+  var dayMenu=menu.filter(function(r){return r['Day'].toLowerCase()===dayFull.toLowerCase();});
+  function findSlot(person,meal_type){
+    for(var i=0;i<dayMenu.length;i++){
+      if(dayMenu[i]['Person']===person&&dayMenu[i]['Meal_Type']===meal_type) return dayMenu[i];
+    }
+    return null;
+  }
+  renderGrSlot('gr-main-dinner','Main','Dinner',findSlot('Main','Dinner'));
+  renderGrSlot('gr-lucas-lunch','Lucas','Lunch',findSlot('Lucas','Lunch'));
+  renderGrSlot('gr-lucas-dinner','Lucas','Dinner',findSlot('Lucas','Dinner'));
+  renderGrHistory(menu);
+}
+
+function renderGrSlot(elId,person,meal_type,entry){
+  var el=document.getElementById(elId); if(!el) return;
+  var lbl=meal_type.toUpperCase();
+  if(entry&&entry['Meal_Name']){
+    var ing=entry['Ingredients']||'';
+    var id=entry['ID'];
+    el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+      +'<div style="flex:1;min-width:0;margin-right:8px">'
+      +'<div class="ov-lbl">'+lbl+'</div>'
+      +'<div class="ov-val" style="font-size:13px;margin-top:2px">'+entry['Meal_Name']+'</div>'
+      +(ing?'<div class="gr-ing">'+ing+'</div>':'<div class="gr-ing" style="color:#ddd;cursor:pointer" onclick="openIngredients(\''+id+'\')">+ add ingredients</div>')
+      +'</div>'
+      +'<div class="nav-btn" onclick="openIngredients(\''+id+'\')" style="flex-shrink:0"><svg viewBox="0 0 12 12" stroke="#888" fill="none" stroke-width="2"><line x1="6" y1="2" x2="6" y2="10"/><line x1="2" y1="6" x2="10" y2="6"/></svg></div>'
+      +'</div>';
+  } else {
+    el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center">'
+      +'<div>'
+      +'<div class="ov-lbl">'+lbl+'</div>'
+      +'<div class="gr-empty">— not logged</div>'
+      +'</div>'
+      +'<div class="nav-btn" onclick="openLogMeal(\''+person+'\',\''+meal_type+'\')" style="flex-shrink:0"><svg viewBox="0 0 12 12" stroke="#888" fill="none" stroke-width="2"><line x1="6" y1="2" x2="6" y2="10"/><line x1="2" y1="6" x2="10" y2="6"/></svg></div>'
+      +'</div>';
+  }
+}
+
+function renderGrHistory(menu){
+  var el=document.getElementById('gr-history'); if(!el) return;
+  var logged=menu.filter(function(r){return r['Meal_Name'];});
+  if(!logged.length){el.innerHTML='<div class="gr-empty" style="padding:4px 0">Nothing logged this week yet</div>';return;}
+  var order=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  logged.sort(function(a,b){return order.indexOf(a['Day'])-order.indexOf(b['Day']);});
+  var html='',lastDay='';
+  logged.forEach(function(r){
+    if(r['Day']!==lastDay){
+      if(lastDay) html+='</div>';
+      html+='<div style="margin-bottom:8px"><div class="ov-lbl" style="margin-bottom:4px">'+r['Day'].toUpperCase()+'</div>';
+      lastDay=r['Day'];
+    }
+    var who=r['Person']==='Main'?'US':'LUCAS';
+    html+='<div class="gr-hist-row"><span class="gr-hist-tag">'+who+' · '+r['Meal_Type'].toUpperCase()+'</span><span class="gr-hist-name">'+r['Meal_Name']+'</span></div>';
+  });
+  if(lastDay) html+='</div>';
+  el.innerHTML=html;
+}
+
+function groceryPrevDay(){
+  var ws=grWeekStart(groceryDate);
+  groceryDate.setDate(groceryDate.getDate()-1);
+  if(grWeekStart(groceryDate)!==ws){loadGrocery();}else{renderGrocery();}
+}
+
+function groceryNextDay(){
+  var ws=grWeekStart(groceryDate);
+  groceryDate.setDate(groceryDate.getDate()+1);
+  if(grWeekStart(groceryDate)!==ws){loadGrocery();}else{renderGrocery();}
+}
+
+function openLogMeal(person,meal_type){
+  grLogCtx={person:person,meal_type:meal_type};
+  document.getElementById('gr-log-title').textContent=(person==='Main'?'MAIN':'LUCAS')+' — '+meal_type.toUpperCase();
+  document.getElementById('gr-log-input').value='';
+  document.getElementById('gr-log-overlay').classList.add('open');
+  setTimeout(function(){document.getElementById('gr-log-input').focus();},80);
+}
+
+function closeLogMeal(){
+  document.getElementById('gr-log-overlay').classList.remove('open');
+  grLogCtx=null;
+}
+
+function saveLogMeal(){
+  if(!grLogCtx) return;
+  var name=document.getElementById('gr-log-input').value.trim();
+  if(!name) return;
+  var btn=document.querySelector('#gr-log-overlay .inbox-send');
+  btn.disabled=true; btn.textContent='...';
+  fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({
+    action:'setMenuItem',
+    week_start:grWeekStart(groceryDate),
+    day:GR_DAY_FULL[groceryDate.getDay()],
+    Person:grLogCtx.person,
+    Meal_Type:grLogCtx.meal_type,
+    Meal_Name:name
+  })}).then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+  .then(function(res){
+    btn.disabled=false; btn.textContent='Save';
+    if(!res.error){closeLogMeal();loadGrocery();}
+  });
+}
+
+function openIngredients(id){
+  var menu=groceryWeekData&&groceryWeekData.menu?groceryWeekData.menu:[];
+  var entry=null;
+  for(var i=0;i<menu.length;i++){if(menu[i]['ID']===id){entry=menu[i];break;}}
+  if(!entry) return;
+  grIngCtx={id:id};
+  document.getElementById('gr-ing-meal-name').textContent=entry['Meal_Name'];
+  document.getElementById('gr-ing-input').value=entry['Ingredients']||'';
+  document.getElementById('gr-ing-overlay').classList.add('open');
+  setTimeout(function(){document.getElementById('gr-ing-input').focus();},80);
+}
+
+function closeIngredients(){
+  document.getElementById('gr-ing-overlay').classList.remove('open');
+  grIngCtx=null;
+}
+
+function saveIngredients(){
+  if(!grIngCtx) return;
+  var ing=document.getElementById('gr-ing-input').value.trim();
+  var btn=document.querySelector('#gr-ing-overlay .inbox-send');
+  btn.disabled=true; btn.textContent='...';
+  fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({
+    action:'updateMenuIngredients',
+    id:grIngCtx.id,
+    ingredients:ing
+  })}).then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+  .then(function(res){
+    btn.disabled=false; btn.textContent='Save';
+    if(!res.error){closeIngredients();loadGrocery();}
+  });
+}
+
 /* ── LOAD ALL ── */
 function loadAll(){
   setLoading('task-list');setLoading('habit-list');setLoading('fin-exp');
@@ -1032,7 +1239,9 @@ function loadAll(){
     // Finance
     if(res[2].error){setError('fin-exp','Finance unavailable: '+res[2].error);}
     else{renderFin(res[2]);}
-    // Grocery — placeholder stays until tab is built
+    // Grocery
+    if(!res[3].error){groceryWeekData=res[3];}
+    renderGrocery();
     // Dismiss splash
     var sp=document.getElementById('splash');
     sp.classList.add('hidden');
