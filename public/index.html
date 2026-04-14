@@ -28,15 +28,20 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .scroll-area{flex:1;overflow-y:auto;background:#fff;scrollbar-width:none}
 .scroll-area::-webkit-scrollbar{display:none}
 .content{padding:16px 18px 24px}
-.tab-bar{flex-shrink:0;display:flex;justify-content:space-around;padding:10px 16px 14px;border-top:1px solid #eee;background:#fff}
-.tab{text-align:center;cursor:pointer;user-select:none}
-.tab-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;margin-top:3px}
-.tab.active .tab-lbl{color:#111}.tab.inactive .tab-lbl{color:#ccc}
-.tab.active svg{stroke:#111}.tab.inactive svg{stroke:#ccc}
-.tab-view{display:none;flex:1;flex-direction:column;overflow:hidden}
-.tab-view.active{display:flex}
+:root{--nav-height:62px;--dur:350ms;--ease:cubic-bezier(0.4,0,0.2,1)}
+#screens{flex:1;position:relative;overflow:hidden}
+.tab-view{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;pointer-events:none;transform:translateX(100%)}
+.main-nav{height:var(--nav-height);background:#fff;border-top:1px solid #eee;display:flex;align-items:stretch;position:relative;flex-shrink:0}
+.nav-pill{position:absolute;top:0;bottom:0;border-radius:0;background:#111;transition:left var(--dur) var(--ease),width var(--dur) var(--ease);pointer-events:none;z-index:0}
+.main-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;border:none;background:none;position:relative;z-index:1;-webkit-tap-highlight-color:transparent;padding:0}
+.main-nav-btn .nav-icon{display:flex;align-items:center;justify-content:center}
+.main-nav-btn .nav-icon svg{width:16px;height:16px;fill:none;stroke-width:1.5;stroke:#111;transition:stroke var(--dur) var(--ease),transform var(--dur) var(--ease),opacity var(--dur) var(--ease)}
+.nav-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;white-space:nowrap;overflow:hidden;max-width:0;opacity:0;color:#fff;transition:max-width var(--dur) var(--ease),opacity var(--dur) var(--ease)}
+.main-nav-btn.active .nav-icon svg{stroke:#fff;transform:scale(1.05)}
+.main-nav-btn.active .nav-lbl{max-width:80px;opacity:1}
+.main-nav-btn:not(.active) .nav-icon svg{opacity:0.3;transform:scale(0.95)}
 
-.inbox-overlay{display:none;position:fixed;bottom:56px;left:0;right:0;background:#fff;border-top:1px solid #eee;padding:14px 18px 18px;z-index:100}
+.inbox-overlay{display:none;position:fixed;bottom:62px;left:0;right:0;background:#fff;border-top:1px solid #eee;padding:14px 18px 18px;z-index:100}
 .inbox-overlay.open{display:block}
 .inbox-tag{font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa;letter-spacing:0.08em;margin-bottom:8px}
 .inbox-tag span{color:#111}
@@ -182,8 +187,9 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
   </div>
 </div>
 
+<div id="screens">
 <!-- TAB: TASKS -->
-<div class="tab-view active" id="view-tasks">
+<div class="tab-view" id="view-tasks">
   <div class="cat-strip" id="cat-strip"></div>
   <div class="scroll-area"><div class="content"><div id="task-list"></div></div></div>
 </div>
@@ -242,6 +248,8 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
     <div id="gr-history"></div>
   </div></div>
 </div>
+
+</div><!-- end #screens -->
 
 <!-- NEW / EDIT HABIT OVERLAY -->
 <div class="inbox-overlay" id="new-habit-overlay">
@@ -360,13 +368,26 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
   </div>
 </div>
 
-<!-- TAB BAR -->
-<div class="tab-bar">
-  <div class="tab active" onclick="switchTab('tasks',this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><div class="tab-lbl">TASKS</div></div>
-  <div class="tab inactive" onclick="switchTab('habits',this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M20 12c0 4.4-3.6 8-8 8s-8-3.6-8-8 3.6-8 8-8"/><path d="M12 8v4l3 3"/><path d="M18 2v4M20 4h-4"/></svg><div class="tab-lbl">HABITS</div></div>
-  <div class="tab inactive" onclick="switchTab('finance',this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><div class="tab-lbl">FINANCE</div></div>
-  <div class="tab inactive" onclick="switchTab('grocery',this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg><div class="tab-lbl">GROCERY</div></div>
-</div>
+<!-- MAIN NAV -->
+<nav class="main-nav" id="main-nav">
+  <div class="nav-pill" id="nav-pill"></div>
+  <button class="main-nav-btn active" data-tab="tasks" data-index="0">
+    <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+    <span class="nav-lbl">TASKS</span>
+  </button>
+  <button class="main-nav-btn" data-tab="habits" data-index="1">
+    <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M20 12c0 4.4-3.6 8-8 8s-8-3.6-8-8 3.6-8 8-8"/><path d="M12 8v4l3 3"/><path d="M18 2v4M20 4h-4"/></svg></span>
+    <span class="nav-lbl">HABITS</span>
+  </button>
+  <button class="main-nav-btn" data-tab="finance" data-index="2">
+    <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span>
+    <span class="nav-lbl">FINANCE</span>
+  </button>
+  <button class="main-nav-btn" data-tab="grocery" data-index="3">
+    <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></span>
+    <span class="nav-lbl">GROCERY</span>
+  </button>
+</nav>
 
 <script>
 /* ── GAS ENDPOINTS ── */
@@ -393,18 +414,76 @@ var editingFinBudget = null;
 var finAllYear = false;
 var finDrag    = null;
 
-/* ── TAB SWITCHING ── */
-function switchTab(tab,el){
-  document.querySelectorAll('.tab-view').forEach(function(v){v.classList.remove('active');});
-  document.getElementById('view-'+tab).classList.add('active');
-  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');t.classList.add('inactive');});
-  el.classList.remove('inactive');el.classList.add('active');
-  currentTab=tab;
-  document.getElementById('topbar-title').textContent=tabTitles[tab];
-  document.getElementById('cat-strip').style.display=tab==='tasks'?'flex':'none';
-  var io=document.getElementById('inbox-overlay');
-  if(io.classList.contains('open'))io.classList.remove('open');
+/* ── SMOOTH NAV ── */
+var navBtns       = document.querySelectorAll('.main-nav-btn');
+var tabViews      = document.querySelectorAll('.tab-view');
+var navPill       = document.getElementById('nav-pill');
+var mainNav       = document.getElementById('main-nav');
+var DUR           = 350;
+var EASE          = 'cubic-bezier(0.4, 0, 0.2, 1)';
+var navActiveIndex = 0;
+var navAnimating   = false;
+var tabOrder       = ['tasks','habits','finance','grocery'];
+
+function placeScreen(screen, x, active) {
+  screen.style.transition    = 'none';
+  screen.style.transform     = 'translateX(' + x + '%)';
+  screen.style.pointerEvents = active ? 'all' : 'none';
 }
+
+function slideScreen(screen, x, active) {
+  var easing = (x === 0) ? 'cubic-bezier(0.34, 1.56, 0.64, 1)' : EASE;
+  screen.style.transition    = 'transform ' + DUR + 'ms ' + easing;
+  screen.style.transform     = 'translateX(' + x + '%)';
+  screen.style.pointerEvents = active ? 'all' : 'none';
+}
+
+function updatePill(btn, snap) {
+  var navRect = mainNav.getBoundingClientRect();
+  var btnRect = btn.getBoundingClientRect();
+  var left    = btnRect.left - navRect.left;
+  var width   = btnRect.width;
+  if (snap) {
+    navPill.style.transition = 'none';
+    navPill.style.left  = left + 'px';
+    navPill.style.width = width + 'px';
+    requestAnimationFrame(function() { navPill.style.transition = ''; });
+  } else {
+    navPill.style.left  = left + 'px';
+    navPill.style.width = width + 'px';
+  }
+}
+
+function navigate(newIndex) {
+  if (newIndex === navActiveIndex || navAnimating) return;
+  navAnimating = true;
+  var dir       = newIndex > navActiveIndex ? 1 : -1;
+  var oldScreen = tabViews[navActiveIndex];
+  var newScreen = tabViews[newIndex];
+  placeScreen(newScreen, 100 * dir, false);
+  setTimeout(function() {
+    slideScreen(oldScreen, -100 * dir, false);
+    setTimeout(function() {
+      slideScreen(newScreen, 0, true);
+    }, DUR * 0.25);
+  }, 325);
+  navBtns[navActiveIndex].classList.remove('active');
+  navBtns[newIndex].classList.add('active');
+  updatePill(navBtns[newIndex], false);
+  var newTab = tabOrder[newIndex];
+  currentTab = newTab;
+  document.getElementById('topbar-title').textContent = tabTitles[newTab];
+  var io = document.getElementById('inbox-overlay');
+  if (io.classList.contains('open')) io.classList.remove('open');
+  navActiveIndex = newIndex;
+  setTimeout(function() { navAnimating = false; }, 325 + DUR * 0.25 + DUR + 30);
+}
+
+navBtns.forEach(function(btn) {
+  btn.addEventListener('click', function() { navigate(parseInt(btn.dataset.index)); });
+});
+
+window.addEventListener('resize', function() { updatePill(navBtns[navActiveIndex], true); });
 function selectCat(el,cat){
   document.querySelectorAll('.cat-t').forEach(function(t){t.classList.remove('active');});
   el.classList.add('active');
@@ -1286,7 +1365,8 @@ function loadAll(){
 }
 
 /* ── INIT ── */
-document.getElementById('cat-strip').style.display='flex';
+tabViews.forEach(function(s, i) { placeScreen(s, i === 0 ? 0 : 100, i === 0); });
+updatePill(navBtns[0], true);
 loadAll();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}
 </script>
