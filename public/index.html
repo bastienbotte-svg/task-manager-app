@@ -56,6 +56,7 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .inbox-msg-tag{color:#aaa;flex-shrink:0}
 
 .drag-handle{width:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:13px;letter-spacing:-1px;cursor:grab;touch-action:none;padding-right:4px}
+.task-dh{width:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#ddd;font-size:10px;letter-spacing:-1px;cursor:grab;touch-action:none}
 .fin-ghost{position:fixed;z-index:200;pointer-events:none;box-shadow:0 6px 24px rgba(0,0,0,0.13);opacity:0.88}
 .fin-dragging{opacity:0.25}
 .card{background:#fff;border-radius:14px;padding:13px 14px;margin-bottom:8px;overflow:hidden;user-select:none}
@@ -413,6 +414,8 @@ var finChartCache = {};
 var editingFinBudget = null;
 var finAllYear = false;
 var finDrag    = null;
+var projDrag   = null;
+var taskDrag   = null;
 
 /* ── SMOOTH NAV ── */
 var navBtns       = document.querySelectorAll('.main-nav-btn');
@@ -707,13 +710,17 @@ function renderTasks(){
   projects.forEach(function(p,pi){
     if(currentCat&&p.cat!==currentCat)return;
     var pct=projPct(p),cls=pct===0?'dashed':'solid',nc=pct===0?'fnt':'nrm',id='p'+pi;
-    var tasks='';p.tasks.forEach(function(t,ti){tasks+='<div class="task-item" onclick="toggleTask('+pi+','+ti+')"><div class="task-check'+(t.d?' done':'')+'" id="tc'+pi+'_'+ti+'"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2"/></svg></div><span class="task-text'+(t.d?' done-txt':'')+'" id="tt'+pi+'_'+ti+'">'+t.t+'</span></div>';});
+    var tasks='';p.tasks.forEach(function(t,ti){tasks+='<div class="task-item real-task-item" onclick="toggleTask('+pi+','+ti+')"><div class="task-dh" id="tdh'+pi+'_'+ti+'">\u2261</div><div class="task-check'+(t.d?' done':'')+'" id="tc'+pi+'_'+ti+'"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2"/></svg></div><span class="task-text'+(t.d?' done-txt':'')+'" id="tt'+pi+'_'+ti+'">'+t.t+'</span></div>';});
     tasks+='<div class="task-item" onclick="showAddTask('+pi+',event)"><div class="task-check" style="border:1px dashed #ddd"><svg viewBox="0 0 8 8" width="8" height="8" fill="none" stroke="#ccc" stroke-width="1.5"><line x1="4" y1="1" x2="4" y2="7"/><line x1="1" y1="4" x2="7" y2="4"/></svg></div><span class="task-text" style="color:#ddd">Add task</span></div><div id="at-'+pi+'" style="display:none;padding:2px 0"><input id="atv-'+pi+'" style="width:100%;font-family:\'Share Tech Mono\',monospace;font-size:9px;color:#111;border:1px solid #e0e0de;border-radius:6px;padding:5px 8px;outline:none" placeholder="Task name..." onkeydown="if(event.key===\'Enter\')submitNewTask('+pi+')"></div>';
-    var card=document.createElement('div');card.className='card '+cls;card.id=id;
-    card.innerHTML='<div class="card-top" onclick="toggleCard(\''+id+'\')"><div class="mid"><div class="ctitle">'+p.name+'</div><div class="cbar" id="cb'+pi+'"></div></div><div class="cright" style="min-width:48px"><div><div class="bnum '+nc+'" id="pn'+pi+'">'+pct+'%</div></div></div></div><div class="expand-body" id="eb'+pi+'">'+tasks+'</div>';
+    var card=document.createElement('div');card.className='card '+cls+' proj-card';card.id=id;
+    card.innerHTML='<div class="card-top" onclick="toggleCard(\''+id+'\')"><div class="drag-handle" id="pdh'+pi+'">\u2261</div><div class="mid"><div class="ctitle">'+p.name+'</div><div class="cbar" id="cb'+pi+'"></div></div><div class="cright" style="min-width:48px"><div><div class="bnum '+nc+'" id="pn'+pi+'">'+pct+'%</div></div></div></div><div class="expand-body" id="eb'+pi+'">'+tasks+'</div>';
     el.appendChild(card);
   });
-  setTimeout(function(){projects.forEach(function(p,pi){var b=document.getElementById('cb'+pi);if(!b)return;var N=segsForEl(b);b._n=N;b.innerHTML=mkBar(projPct(p),N);});},50);
+  setTimeout(function(){
+    projects.forEach(function(p,pi){var b=document.getElementById('cb'+pi);if(!b)return;var N=segsForEl(b);b._n=N;b.innerHTML=mkBar(projPct(p),N);});
+    setupProjDrag();
+    setupTaskDrag();
+  },50);
 }
 function toggleCard(id){document.getElementById('eb'+id.replace('p','')).classList.toggle('open');}
 function toggleTask(pi,ti){
@@ -1137,6 +1144,109 @@ function endFinDrag(e){
     var names=finExpenses.map(function(d){return d.name;});
     fetch(GAS_FINANCE,{method:'POST',body:JSON.stringify({action:'updateCategoryOrder',names:names})}).catch(function(){});
   }
+}
+
+/* ── PROJ DRAG ── */
+function setupProjDrag(){
+  var cards=document.querySelectorAll('#task-list .proj-card');
+  cards.forEach(function(card,visIdx){
+    var handle=card.querySelector('.drag-handle');
+    if(!handle)return;
+    handle.addEventListener('touchstart',function(e){startProjDrag(e,visIdx);},{passive:false});
+  });
+}
+function startProjDrag(e,srcVisIdx){
+  e.preventDefault();e.stopPropagation();
+  var cards=Array.from(document.querySelectorAll('#task-list .proj-card'));
+  var card=cards[srcVisIdx];
+  var rect=card.getBoundingClientRect();
+  var ghost=card.cloneNode(true);
+  ghost.style.cssText='position:fixed;left:'+rect.left+'px;top:'+rect.top+'px;width:'+rect.width+'px;z-index:200;pointer-events:none;box-shadow:0 6px 24px rgba(0,0,0,0.13);opacity:0.88;border-radius:14px;background:#fff;';
+  document.body.appendChild(ghost);
+  card.classList.add('fin-dragging');
+  var visProjObjs=[];
+  projects.forEach(function(p){if(!currentCat||p.cat===currentCat)visProjObjs.push(p);});
+  var mids=cards.map(function(c){var r=c.getBoundingClientRect();return r.top+r.height/2;});
+  projDrag={srcVisIdx:srcVisIdx,card:card,ghost:ghost,startY:e.touches[0].clientY,ghostTop:rect.top,cardH:rect.height,mids:mids,visProjObjs:visProjObjs};
+  document.addEventListener('touchmove',onProjDragMove,{passive:false});
+  document.addEventListener('touchend',endProjDrag,{once:true});
+}
+function onProjDragMove(e){
+  if(!projDrag)return;e.preventDefault();
+  projDrag.ghost.style.top=(projDrag.ghostTop+(e.touches[0].clientY-projDrag.startY))+'px';
+}
+function endProjDrag(e){
+  if(!projDrag)return;
+  document.removeEventListener('touchmove',onProjDragMove);
+  var y=e.changedTouches[0].clientY,dy=y-projDrag.startY;
+  var centerY=projDrag.ghostTop+dy+projDrag.cardH/2;
+  var dropVisIdx=projDrag.mids.length-1;
+  for(var i=0;i<projDrag.mids.length;i++){if(centerY<projDrag.mids[i]){dropVisIdx=i;break;}}
+  document.body.removeChild(projDrag.ghost);
+  projDrag.card.classList.remove('fin-dragging');
+  var srcVisIdx=projDrag.srcVisIdx,visProjObjs=projDrag.visProjObjs;
+  projDrag=null;
+  if(dropVisIdx===srcVisIdx)return;
+  var moved=visProjObjs.splice(srcVisIdx,1)[0];
+  visProjObjs.splice(dropVisIdx,0,moved);
+  var slots=[];
+  projects.forEach(function(p,pi){if(!currentCat||p.cat===currentCat)slots.push(pi);});
+  slots.forEach(function(pi,i){projects[pi]=visProjObjs[i];});
+  renderTasks();
+  var ids=visProjObjs.map(function(p){return p.id;});
+  fetch(GAS_TASKS,{method:'POST',body:JSON.stringify({action:'reorderProjects',ids:ids})}).catch(function(){});
+}
+
+/* ── TASK DRAG ── */
+function setupTaskDrag(){
+  document.querySelectorAll('#task-list .proj-card').forEach(function(projCard,visIdx){
+    projCard.querySelectorAll('.task-dh').forEach(function(handle,ti){
+      handle.addEventListener('touchstart',function(e){startTaskDrag(e,visIdx,ti);},{passive:false});
+    });
+  });
+}
+function startTaskDrag(e,visIdx,srcTi){
+  e.preventDefault();e.stopPropagation();
+  var visProjObjs=[];
+  projects.forEach(function(p){if(!currentCat||p.cat===currentCat)visProjObjs.push(p);});
+  var proj=visProjObjs[visIdx];
+  var projPi=-1;
+  projects.forEach(function(p,pi){if(p===proj)projPi=pi;});
+  var projCard=document.querySelectorAll('#task-list .proj-card')[visIdx];
+  var taskEls=Array.from(projCard.querySelectorAll('.real-task-item'));
+  var taskEl=taskEls[srcTi];
+  var rect=taskEl.getBoundingClientRect();
+  var ghost=taskEl.cloneNode(true);
+  ghost.style.cssText='position:fixed;left:'+rect.left+'px;top:'+rect.top+'px;width:'+rect.width+'px;z-index:200;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.1);opacity:0.88;background:#fff;';
+  document.body.appendChild(ghost);
+  taskEl.classList.add('fin-dragging');
+  var mids=taskEls.map(function(el){var r=el.getBoundingClientRect();return r.top+r.height/2;});
+  taskDrag={visIdx:visIdx,projPi:projPi,srcTi:srcTi,taskEl:taskEl,ghost:ghost,startY:e.touches[0].clientY,ghostTop:rect.top,taskH:rect.height,mids:mids};
+  document.addEventListener('touchmove',onTaskDragMove,{passive:false});
+  document.addEventListener('touchend',endTaskDrag,{once:true});
+}
+function onTaskDragMove(e){
+  if(!taskDrag)return;e.preventDefault();
+  taskDrag.ghost.style.top=(taskDrag.ghostTop+(e.touches[0].clientY-taskDrag.startY))+'px';
+}
+function endTaskDrag(e){
+  if(!taskDrag)return;
+  document.removeEventListener('touchmove',onTaskDragMove);
+  var y=e.changedTouches[0].clientY,dy=y-taskDrag.startY;
+  var centerY=taskDrag.ghostTop+dy+taskDrag.taskH/2;
+  var dropTi=taskDrag.mids.length-1;
+  for(var i=0;i<taskDrag.mids.length;i++){if(centerY<taskDrag.mids[i]){dropTi=i;break;}}
+  document.body.removeChild(taskDrag.ghost);
+  taskDrag.taskEl.classList.remove('fin-dragging');
+  var projPi=taskDrag.projPi,srcTi=taskDrag.srcTi;
+  taskDrag=null;
+  if(dropTi===srcTi)return;
+  var tasks=projects[projPi].tasks;
+  var moved=tasks.splice(srcTi,1)[0];
+  tasks.splice(dropTi,0,moved);
+  renderTasks();
+  var ids=tasks.map(function(t){return t.id;});
+  fetch(GAS_TASKS,{method:'POST',body:JSON.stringify({action:'reorderTasks',ids:ids})}).catch(function(){});
 }
 
 /* ── GROCERY ── */
