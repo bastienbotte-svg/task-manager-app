@@ -291,6 +291,29 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
   </div>
 </div>
 
+<!-- TASK DETAIL OVERLAY -->
+<div class="inbox-overlay" id="task-detail-overlay">
+  <div class="inbox-tag">TASK</div>
+  <input id="td-name" class="inbox-input" style="height:40px;margin-bottom:10px" placeholder="Task name...">
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <div style="flex:1">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;letter-spacing:0.08em;margin-bottom:4px">DUE DATE</div>
+      <input id="td-date" type="date" class="inbox-input" style="height:36px;padding:0 10px">
+    </div>
+    <div style="flex:1">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;letter-spacing:0.08em;margin-bottom:4px">TIME</div>
+      <input id="td-time" type="time" class="inbox-input" style="height:36px;padding:0 10px">
+    </div>
+  </div>
+  <div class="inbox-actions">
+    <span class="inbox-cancel" style="color:#D85A30" onclick="deleteCurrentTask()">Delete</span>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span class="inbox-cancel" onclick="closeTaskDetail()">Cancel</span>
+      <button class="inbox-send" onclick="saveTaskDetail()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- NEW PROJECT OVERLAY -->
 <div class="inbox-overlay" id="new-project-overlay">
   <div class="inbox-tag">NEW PROJECT</div>
@@ -693,7 +716,9 @@ function buildProjects(data){
   (data.tasks||[]).forEach(function(t){
     var pid=String(t['Parent_ID']||'');
     if(!byParent[pid])byParent[pid]=[];
-    byParent[pid].push({t:t['Name'],d:String(t['Status']||'').toUpperCase()==='DONE',id:t['ID']});
+    var dueRaw=t['Execution_Date'],dueStr='';
+    if(dueRaw){var s=String(dueRaw).trim();if(/^\d{4}-\d{2}-\d{2}/.test(s))dueStr=s.length>10?s.slice(0,16):s.slice(0,10);}
+    byParent[pid].push({t:t['Name'],d:String(t['Status']||'').toUpperCase()==='DONE',id:t['ID'],due:dueStr});
   });
   return (data.projects||[]).map(function(p){
     return {id:p['ID'],name:p['Name'],cat:p['Category']||'',tasks:byParent[String(p['ID'])]||[]};
@@ -710,7 +735,7 @@ function renderTasks(){
   projects.forEach(function(p,pi){
     if(currentCat&&p.cat!==currentCat)return;
     var pct=projPct(p),cls=pct===0?'dashed':'solid',nc=pct===0?'fnt':'nrm',id='p'+pi;
-    var tasks='';p.tasks.forEach(function(t,ti){tasks+='<div class="task-item real-task-item" onclick="toggleTask('+pi+','+ti+')"><div class="task-dh" id="tdh'+pi+'_'+ti+'">\u2261</div><div class="task-check'+(t.d?' done':'')+'" id="tc'+pi+'_'+ti+'"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2"/></svg></div><span class="task-text'+(t.d?' done-txt':'')+'" id="tt'+pi+'_'+ti+'">'+t.t+'</span></div>';});
+    var tasks='';p.tasks.forEach(function(t,ti){tasks+='<div class="task-item real-task-item" onclick="openTaskDetail('+pi+','+ti+')"><div class="task-dh" id="tdh'+pi+'_'+ti+'">\u2261</div><div class="task-check'+(t.d?' done':'')+'" id="tc'+pi+'_'+ti+'" onclick="event.stopPropagation();toggleTask('+pi+','+ti+')"><svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2"/></svg></div><span class="task-text'+(t.d?' done-txt':'')+'" id="tt'+pi+'_'+ti+'">'+t.t+'</span></div>';});
     tasks+='<div class="task-item" onclick="showAddTask('+pi+',event)"><div class="task-check" style="border:1px dashed #ddd"><svg viewBox="0 0 8 8" width="8" height="8" fill="none" stroke="#ccc" stroke-width="1.5"><line x1="4" y1="1" x2="4" y2="7"/><line x1="1" y1="4" x2="7" y2="4"/></svg></div><span class="task-text" style="color:#ddd">Add task</span></div><div id="at-'+pi+'" style="display:none;padding:2px 0"><input id="atv-'+pi+'" style="width:100%;font-family:\'Share Tech Mono\',monospace;font-size:9px;color:#111;border:1px solid #e0e0de;border-radius:6px;padding:5px 8px;outline:none" placeholder="Task name..." onkeydown="if(event.key===\'Enter\')submitNewTask('+pi+')"></div>';
     var card=document.createElement('div');card.className='card '+cls+' proj-card';card.id=id;
     card.innerHTML='<div class="card-top" onclick="toggleCard(\''+id+'\')"><div class="drag-handle" id="pdh'+pi+'">\u2261</div><div class="mid"><div class="ctitle">'+p.name+'</div><div class="cbar" id="cb'+pi+'"></div></div><div class="cright" style="min-width:48px"><div><div class="bnum '+nc+'" id="pn'+pi+'">'+pct+'%</div></div></div></div><div class="expand-body" id="eb'+pi+'">'+tasks+'</div>';
@@ -741,6 +766,46 @@ function toggleTask(pi,ti){
     projects.splice(pi,1);
     renderTasks();
   }
+}
+
+/* ── TASK DETAIL ── */
+var taskDetailCtx=null;
+function openTaskDetail(pi,ti){
+  taskDetailCtx={pi:pi,ti:ti};
+  var t=projects[pi].tasks[ti];
+  document.getElementById('td-name').value=t.t;
+  var due=t.due||'';
+  document.getElementById('td-date').value=due?due.slice(0,10):'';
+  document.getElementById('td-time').value=(due&&due.length>10)?due.slice(11,16):'';
+  document.getElementById('task-detail-overlay').classList.add('open');
+}
+function closeTaskDetail(){
+  taskDetailCtx=null;
+  document.getElementById('task-detail-overlay').classList.remove('open');
+}
+function saveTaskDetail(){
+  if(!taskDetailCtx)return;
+  var pi=taskDetailCtx.pi,ti=taskDetailCtx.ti;
+  var name=document.getElementById('td-name').value.trim();
+  if(!name)return;
+  var date=document.getElementById('td-date').value;
+  var time=document.getElementById('td-time').value;
+  var due=date?(time?date+'T'+time:date):'';
+  var taskId=projects[pi].tasks[ti].id;
+  projects[pi].tasks[ti].t=name;
+  projects[pi].tasks[ti].due=due;
+  closeTaskDetail();
+  renderTasks();
+  fetch(GAS_TASKS,{method:'POST',body:JSON.stringify({action:'updateItem',id:taskId,Name:name,Execution_Date:due})}).catch(function(){});
+}
+function deleteCurrentTask(){
+  if(!taskDetailCtx)return;
+  var pi=taskDetailCtx.pi,ti=taskDetailCtx.ti;
+  var taskId=projects[pi].tasks[ti].id;
+  closeTaskDetail();
+  projects[pi].tasks.splice(ti,1);
+  renderTasks();
+  fetch(GAS_TASKS,{method:'POST',body:JSON.stringify({action:'deleteTask',id:taskId})}).catch(function(){});
 }
 
 /* ── HABITS ── */
