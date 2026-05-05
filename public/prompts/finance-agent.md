@@ -28,6 +28,11 @@ This list is fetched live from the Merchants tab in the Michel Finance sheet. Us
 
 ## RULES
 
+### Data integrity
+- NEVER invent, hallucinate, or estimate transactions. Only report transactions that are explicitly and visibly present in the PDF.
+- If a transaction is unclear or partially readable, flag it — do not guess.
+- If the PDF appears empty, unreadable, or is not a bank statement, say so immediately and stop.
+
 ### Categorization
 - Match each transaction's raw merchant name against the RawName column in the merchant list first.
 - If a match is found: use the Nickname for display, DefaultCategory as the starting category.
