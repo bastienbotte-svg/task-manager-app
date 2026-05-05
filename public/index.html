@@ -1802,16 +1802,17 @@ function sendChatMsg() {
   var text    = (input.value || '').trim();
   if (!text && !chatFileData) return;
 
-  var content = text || 'Here is my ING bank statement. Please process it.';
+  var displayContent = text || 'Here is my ING bank statement. Please process it.';
+  var pdfText        = null;
   var fallbackBase64 = null;
 
   if (chatFileData) {
     if (chatFileData.text) {
-      content += '\n\n--- ING BANK STATEMENT ---\n' + chatFileData.text + '\n--- END OF STATEMENT ---';
-      console.log('[chat] sending PDF as extracted text, length:', chatFileData.text.length);
+      pdfText = chatFileData.text;
+      console.log('[chat] PDF text ready, length:', pdfText.length);
     } else {
       fallbackBase64 = chatFileData.base64;
-      console.log('[chat] text extraction unavailable, falling back to base64, length:', fallbackBase64 ? fallbackBase64.length : 0);
+      console.log('[chat] PDF text unavailable, using base64 fallback, length:', fallbackBase64 ? fallbackBase64.length : 0);
     }
     chatFileData = null;
     renderChatFileBar();
@@ -1820,19 +1821,23 @@ function sendChatMsg() {
   input.value = '';
   chatInputResize(input);
 
-  chatMessages.push({ role: 'user', content: content });
+  chatMessages.push({ role: 'user', content: displayContent });
   chatMessages.push({ role: 'thinking' });
   chatSending = true;
   document.getElementById('chat-send-btn').disabled = true;
   renderChat();
 
-  var body = {
-    action:   'chat',
-    messages: chatMessages.filter(function(m) { return m.role !== 'thinking'; })
-  };
+  var apiMessages = chatMessages.filter(function(m) { return m.role !== 'thinking'; }).map(function(m, i, arr) {
+    if (i === arr.length - 1 && pdfText) {
+      return { role: 'user', content: m.content + '\n\n--- ING BANK STATEMENT ---\n' + pdfText + '\n--- END OF STATEMENT ---' };
+    }
+    return m;
+  });
+
+  var body = { action: 'chat', messages: apiMessages };
   if (chatContext)     body.system    = chatContext.system;
-  if (fallbackBase64) { body.fileBase64 = fallbackBase64; }
-  console.log('[chat] sending — pdfInText:', content.includes('--- ING BANK STATEMENT ---'), '| fallbackBase64:', !!fallbackBase64, '| system length:', body.system ? body.system.length : 0);
+  if (fallbackBase64) body.fileBase64 = fallbackBase64;
+  console.log('[chat] sending — pdfInMsg:', !!pdfText, '| fallbackBase64:', !!fallbackBase64, '| system length:', body.system ? body.system.length : 0);
 
   fetch(GAS_FINANCE, { method: 'POST', body: JSON.stringify(body) })
     .then(function(r) { return r.json(); })
