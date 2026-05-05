@@ -1623,39 +1623,35 @@ var chatFileData    = null;
 var chatSending     = false;
 var pendingTxImport = null;
 
-var FINANCE_SYSTEM_BASE = [
-  'You are a finance assistant for a personal budgeting app.',
-  'When the user uploads a bank statement PDF, extract ALL transactions.',
-  'Return them as a single JSON code block — no other text before the block:\n',
-  '```json',
-  '[{"date":"YYYY-MM-DD","Description":"merchant","Amount":12.34,"Type":"expense","Category":"..."}]',
-  '```\n',
-  'Rules:',
-  '- date format: YYYY-MM-DD',
-  '- Amount: always a positive number (both expenses and deposits)',
-  '- Type: exactly "expense" or "deposit"',
-  '- Description: clean merchant name, no codes or extra info',
-  '- Category: must be one of the provided categories\n',
-  'After the JSON block, add one short line: "Found X transactions — Y expenses, Z deposits."\n',
-  'For general questions (no PDF), respond normally without JSON.'
-].join('\n');
-
 function openFinanceChat() {
   navigate(4);
   chatMessages    = [];
   chatFileData    = null;
   pendingTxImport = null;
-  chatContext     = { label: 'FINANCE · IMPORT', system: FINANCE_SYSTEM_BASE };
+  chatContext     = { label: 'FINANCE · IMPORT', system: '' };
   renderChat();
-  fetch(GAS_FINANCE + '?month=' + finMonth + '&year=' + finYear)
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-      if (d.categories && d.categories.length) {
-        var cats = d.categories.map(function(c) { return c['Name']; }).filter(Boolean).join(', ');
-        chatContext = { label: 'FINANCE · IMPORT', system: FINANCE_SYSTEM_BASE + '\n\nAvailable categories: ' + cats };
-      }
-    })
-    .catch(function() {});
+
+  Promise.all([
+    fetch('prompts/finance-agent.md').then(function(r) { return r.text(); }),
+    fetch(GAS_FINANCE + '?month=' + finMonth + '&year=' + finYear).then(function(r) { return r.json(); })
+  ]).then(function(results) {
+    var md   = results[0];
+    var data = results[1];
+
+    var match  = md.match(/```\n([\s\S]*?)\n```/);
+    var system = match ? match[1] : md;
+
+    var catList = (data.categories || []).map(function(c) { return c['Name']; }).filter(Boolean).join('\n');
+
+    var merchantList = (data.merchants || []).map(function(m) {
+      return [m['RawName'], m['Nickname'], m['DefaultCategory'], m['Ambiguous'], m['Recurring'], m['Frequency'] || 'null', m['PaymentsLeft'] || 'null'].join(' | ');
+    }).join('\n');
+
+    system = system.replace('{{MERCHANT_LIST}}', merchantList || '(none yet)');
+    system = system.replace('{{CATEGORY_LIST}}', catList      || '(none yet)');
+
+    chatContext = { label: 'FINANCE · IMPORT', system: system };
+  }).catch(function() {});
 }
 
 function clearChat() {
