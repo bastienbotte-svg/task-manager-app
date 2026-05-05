@@ -184,11 +184,14 @@ function doPost(e) {
     var result;
 
     switch (action) {
-      case 'addTransaction':     result = addTransaction(body);     break;
+      case 'addTransaction':      result = addTransaction(body);          break;
+      case 'batchAddTransactions': result = batchAddTransactions(body);  break;
       case 'updateBudget':       result = updateBudget(body);       break;
       case 'setBudgetAllYear':   result = setBudgetAllYear(body);   break;
+      case 'setMonthlyBudgets':  result = setMonthlyBudgets(body);  break;
       case 'updateCategoryOrder':result = updateCategoryOrder(body);break;
       case 'addInbox':           result = addInbox(body);           break;
+      case 'chat':               result = handleChat(body);         break;
       default:                   result = { error: 'Unknown action: ' + action };
     }
 
@@ -244,6 +247,27 @@ function addTransaction(body) {
 
   txSheet.appendRow(row);
   return { success: true, id: newId };
+}
+
+// batchAddTransactions — appends multiple transactions in a single call.
+// body.transactions = array of transaction objects (same fields as addTransaction).
+// Returns { success, count, errors } where errors lists any rows that failed.
+function batchAddTransactions(body) {
+  var transactions = body.transactions;
+  if (!Array.isArray(transactions) || transactions.length === 0) {
+    return { error: 'transactions must be a non-empty array' };
+  }
+  var errors = [];
+  var count  = 0;
+  transactions.forEach(function(tx, i) {
+    var result = addTransaction(tx);
+    if (result.error) {
+      errors.push({ index: i, merchant: tx.Merchant || tx.merchant || '', error: result.error });
+    } else {
+      count++;
+    }
+  });
+  return { success: true, count: count, errors: errors };
 }
 
 // updateBudget — creates or updates a Budget entry for category + month + year.
@@ -351,6 +375,58 @@ function setBudgetAllYear(body) {
   return { success: true };
 }
 
+// setMonthlyBudgets — sets 12 different amounts (one per month) for a category+year.
+// body.amounts = array of 12 numbers [jan, feb, ..., dec]
+function setMonthlyBudgets(body) {
+  var ss          = getSpreadsheet();
+  var budgetSheet = ss.getSheetByName('Budget');
+  if (!budgetSheet) return { error: 'Budget tab not found' };
+
+  var category = (body.category || '').trim();
+  var year     = parseInt(body.year, 10);
+  var amounts  = body.amounts;
+  var type     = body.type || '';
+
+  if (!category || !year || !Array.isArray(amounts) || amounts.length !== 12) {
+    return { error: 'Missing or invalid fields: category, year, amounts (array of 12)' };
+  }
+
+  var headers = getHeaders(budgetSheet);
+  var lastRow = budgetSheet.getLastRow();
+
+  // Delete existing rows for this category+year
+  if (lastRow >= 2) {
+    var values = budgetSheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+    for (var i = values.length - 1; i >= 0; i--) {
+      var rCat  = String(values[i][headers.indexOf('Category')] || '').trim().toLowerCase();
+      var rYear = String(values[i][headers.indexOf('Year')]     || '').trim();
+      if (rCat === category.toLowerCase() && parseInt(rYear, 10) === year) {
+        budgetSheet.deleteRow(i + 2);
+      }
+    }
+  }
+
+  // Insert 12 rows, one per month, each with its own amount
+  var newId = getNextId(budgetSheet);
+  for (var m = 1; m <= 12; m++) {
+    var amount = String(amounts[m - 1]);
+    var row = headers.map(function(h) {
+      switch (h) {
+        case 'ID':       return String(newId++);
+        case 'Category': return category;
+        case 'Type':     return type;
+        case 'Month':    return String(m);
+        case 'Year':     return String(year);
+        case 'Amount':   return amount;
+        default:         return '';
+      }
+    });
+    budgetSheet.appendRow(row);
+  }
+
+  return { success: true };
+}
+
 // updateCategoryOrder — writes Order values to the Categories sheet.
 // body.names = ordered array of category names (expenses); deposits are not included.
 function updateCategoryOrder(body) {
@@ -403,4 +479,53 @@ function addInbox(body) {
 
   sheet.appendRow(row);
   return { success: true };
+}
+
+// handleChat — proxies a conversation to the Claude API.
+// body.messages  : [{role:'user'|'assistant', content:'...'}]
+// body.system    : optional system prompt string
+// body.fileBase64: optional base64-encoded PDF
+function handleChat(body) {
+  var apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  if (!apiKey) return { error: 'ANTHROPIC_API_KEY not configured in Script Properties' };
+
+  var messages = body.messages || [];
+  var system   = body.system   || '';
+
+  var claudeMessages = [];
+  for (var i = 0; i < messages.length; i++) {
+    var m = messages[i];
+    if (i === messages.length - 1 && m.role === 'user' && body.fileBase64) {
+      claudeMessages.push({
+        role: 'user',
+        content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: body.fileBase64 } },
+          { type: 'text', text: m.content || 'Please analyze this document.' }
+        ]
+      });
+    } else {
+      claudeMessages.push({ role: m.role, content: m.content });
+    }
+  }
+
+  var resp = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+    method: 'post',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json'
+    },
+    payload: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      system: system,
+      messages: claudeMessages
+    }),
+    muteHttpExceptions: true
+  });
+
+  var data = JSON.parse(resp.getContentText());
+  if (data.error) return { error: data.error.message };
+  if (!data.content || !data.content[0]) return { error: 'Empty response from Claude' };
+  return { reply: data.content[0].text };
 }
