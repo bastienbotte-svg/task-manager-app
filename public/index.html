@@ -251,10 +251,12 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
     <div class="seg-tabs-main">
       <div class="seg-btn active" onclick="switchFinTab('exp',this)">EXPENSES</div>
       <div class="seg-btn" onclick="switchFinTab('dep',this)">DEPOSITS</div>
+      <div class="seg-btn" onclick="switchFinTab('chart',this)">CHART</div>
       <div class="seg-btn" onclick="switchFinTab('tx',this)">TRANSACTIONS</div>
     </div>
     <div id="fin-exp" class="fin-view active"></div>
     <div id="fin-dep" class="fin-view"></div>
+    <div id="fin-chart" class="fin-view"></div>
     <div id="fin-tx" class="fin-view"></div>
   </div></div>
 </div>
@@ -1160,8 +1162,9 @@ function changeFinMonth(delta){
   var MONTHS=['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
   document.querySelector('.month-lbl').textContent=MONTHS[finMonth-1]+' '+finYear;
   finChartCache={};
-  setLoading('fin-exp');document.getElementById('fin-dep').innerHTML='';document.getElementById('fin-tx').innerHTML='';
+  setLoading('fin-exp');document.getElementById('fin-dep').innerHTML='';document.getElementById('fin-tx').innerHTML='';document.getElementById('fin-chart').innerHTML='';
   fetch(GAS_FINANCE+'?month='+finMonth+'&year='+finYear).then(function(r){return r.json();}).then(function(data){if(data.error){setError('fin-exp',data.error);}else{renderFin(data);}}).catch(function(){setError('fin-exp','Finance unavailable');});
+  loadFinOverviewChart();
 }
 
 /* ── FIN BUDGET OVERLAY ── */
@@ -1253,6 +1256,48 @@ function renderFinChart(el,history){
   var yLbls='<text x="'+(ml-4)+'" y="'+(mt+3)+'" font-size="8" fill="#aaa" text-anchor="end">'+Math.round(maxVal)+'</text><text x="'+(ml-4)+'" y="'+(mt+ph/2+3)+'" font-size="8" fill="#aaa" text-anchor="end">'+Math.round(maxVal/2)+'</text><text x="'+(ml-4)+'" y="'+(mt+ph+3)+'" font-size="8" fill="#aaa" text-anchor="end">0</text>';
   var legend='<text x="'+(W-mr)+'" y="'+(mt-2)+'" font-size="7" fill="#bbb" text-anchor="end">budget \u00b110% \u00b7 tracked</text>';
   el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;margin-top:8px">'+guides+yLbls+xLbls+legend+band+'<polyline points="'+trackPts.trim()+'" stroke="#111" stroke-width="1.5" fill="none"/>'+dots+'</svg>';
+}
+
+/* ── FIN OVERVIEW CHART ── */
+function loadFinOverviewChart(){
+  var el=document.getElementById('fin-chart');
+  if(!el)return;
+  fetch(GAS_FINANCE+'?mode=overview&month='+finMonth+'&year='+finYear)
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(!data.error&&data.history)renderFinOverviewChart(el,data.history);
+    }).catch(function(){});
+}
+function renderFinOverviewChart(el,history){
+  var W=300,H=130,ml=34,mr=6,mt=14,mb=20,pw=W-ml-mr,ph=H-mt-mb;
+  var maxVal=0;
+  history.forEach(function(p){
+    if(p.budget*1.1>maxVal)maxVal=p.budget*1.1;
+    if(p.tracked>maxVal)maxVal=p.tracked;
+    if(p.deposits>maxVal)maxVal=p.deposits;
+  });
+  if(!maxVal)maxVal=100;
+  var mag=Math.pow(10,Math.floor(Math.log10(maxVal)));
+  maxVal=Math.ceil(maxVal*1.1/mag)*mag;
+  var n=history.length;
+  function xOf(i){return ml+(n<=1?pw/2:i*pw/(n-1));}
+  function yOf(v){return mt+ph-(v/maxVal)*ph;}
+  var bandUpper='',bandLower='',expPts='',depPts='',expDots='',depDots='';
+  history.forEach(function(p,i){
+    var x=xOf(i);
+    bandUpper+=x+','+yOf(p.budget*1.1)+' ';
+    bandLower=x+','+yOf(p.budget*0.9)+' '+bandLower;
+    expPts+=x+','+yOf(p.tracked)+' ';
+    depPts+=x+','+yOf(p.deposits)+' ';
+    expDots+='<circle cx="'+x+'" cy="'+yOf(p.tracked)+'" r="2.5" fill="#111"/>';
+    depDots+='<circle cx="'+x+'" cy="'+yOf(p.deposits)+'" r="2.5" fill="#1D9E75"/>';
+  });
+  var band='<polygon points="'+(bandUpper+bandLower).trim()+'" fill="rgba(0,0,0,0.07)" stroke="none"/>';
+  var xLbls='';history.forEach(function(p,i){xLbls+='<text x="'+xOf(i)+'" y="'+(H-4)+'" font-size="8" fill="#aaa" text-anchor="middle">'+p.label+'</text>';});
+  var guides='<line x1="'+ml+'" y1="'+mt+'" x2="'+(W-mr)+'" y2="'+mt+'" stroke="#f0f0ee" stroke-width="1"/><line x1="'+ml+'" y1="'+(mt+ph/2)+'" x2="'+(W-mr)+'" y2="'+(mt+ph/2)+'" stroke="#f0f0ee" stroke-width="1"/><line x1="'+ml+'" y1="'+(mt+ph)+'" x2="'+(W-mr)+'" y2="'+(mt+ph)+'" stroke="#f0f0ee" stroke-width="1"/>';
+  var yLbls='<text x="'+(ml-4)+'" y="'+(mt+3)+'" font-size="8" fill="#aaa" text-anchor="end">'+Math.round(maxVal)+'</text><text x="'+(ml-4)+'" y="'+(mt+ph/2+3)+'" font-size="8" fill="#aaa" text-anchor="end">'+Math.round(maxVal/2)+'</text><text x="'+(ml-4)+'" y="'+(mt+ph+3)+'" font-size="8" fill="#aaa" text-anchor="end">0</text>';
+  var legend='<text x="'+(W-mr)+'" y="'+(mt-2)+'" font-size="7" fill="#bbb" text-anchor="end">budget ±10% · expenses · deposits</text>';
+  el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;margin-top:8px">'+guides+yLbls+xLbls+legend+band+'<polyline points="'+expPts.trim()+'" stroke="#111" stroke-width="1.5" fill="none"/><polyline points="'+depPts.trim()+'" stroke="#1D9E75" stroke-width="1.5" fill="none"/>'+expDots+depDots+'</svg>';
 }
 
 /* ── FIN DRAG ── */
@@ -1637,6 +1682,7 @@ function loadAll(){
     // Finance
     if(res[2].error){setError('fin-exp','Finance unavailable: '+res[2].error);}
     else{renderFin(res[2]);}
+    loadFinOverviewChart();
     // Grocery
     if(!res[3].error){groceryWeekData=res[3];}
     renderGrocery();

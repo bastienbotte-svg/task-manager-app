@@ -157,6 +157,37 @@ function doGet(e) {
       return jsonOut({ history: history });
     }
 
+    // Overview mode: return 6-month rolling totals across all categories
+    if (e && e.parameter && e.parameter.mode === 'overview') {
+      var MONTH_ABBR_OV = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      var ovHistory = [];
+      for (var i = 5; i >= 0; i--) {
+        var m = month - i, y = year;
+        while (m <= 0) { m += 12; y--; }
+        var budTotal = 0, expTotal = 0, depTotal = 0;
+        cats.forEach(function(c) {
+          if (String(c['Type'] || '').toUpperCase() === 'EXPENSE') {
+            budTotal += effectiveBudget(allBud, cats, c['Name'], m, y);
+          }
+        });
+        allTx.forEach(function(r) {
+          if (parseMonth(r['Month']) === m && parseInt(r['Year'], 10) === y) {
+            var amt = parseAmount(r['Amount']);
+            var tp  = String(r['Type'] || '').toLowerCase();
+            if (tp === 'expense')                    expTotal += amt;
+            else if (tp === 'deposit' || tp === 'income') depTotal += amt;
+          }
+        });
+        ovHistory.push({
+          label:    MONTH_ABBR_OV[m],
+          budget:   Math.round(budTotal * 100) / 100,
+          tracked:  Math.round(expTotal * 100) / 100,
+          deposits: Math.round(depTotal * 100) / 100
+        });
+      }
+      return jsonOut({ history: ovHistory });
+    }
+
     var transactions = allTx.filter(function(r) {
       return parseMonth(r['Month']) === month && parseInt(r['Year'], 10) === year;
     }).map(function(r) {
