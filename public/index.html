@@ -1651,6 +1651,7 @@ var chatSending       = false;
 var pendingTxImport   = null;
 var chatContextReady  = false;
 var chatDupTxCache    = [];
+var chatHasWritten    = false;
 
 function openFinanceChat() {
   navigate(4);
@@ -1659,6 +1660,7 @@ function openFinanceChat() {
   pendingTxImport  = null;
   chatContextReady = false;
   chatDupTxCache   = [];
+  chatHasWritten   = false;
   chatContext      = { label: 'FINANCE · IMPORT', system: '' };
   renderChat();
 
@@ -1723,6 +1725,7 @@ function clearChat() {
   pendingTxImport  = null;
   chatContextReady = false;
   chatDupTxCache   = [];
+  chatHasWritten   = false;
   renderChat();
 }
 
@@ -1934,6 +1937,12 @@ function handleChatReply(d) {
 }
 
 function executeWriteTransactions(txArr) {
+  if (chatHasWritten) {
+    chatMessages.push({ role: 'system', content: 'Write blocked — transactions already written this session.' });
+    finishSend();
+    return;
+  }
+  chatHasWritten = true;
   chatMessages.push({ role: 'thinking' });
   chatSending = true;
   document.getElementById('chat-send-btn').disabled = true;
