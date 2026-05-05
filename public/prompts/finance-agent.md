@@ -197,7 +197,7 @@ Anything else you'd like to know about this week's finances?"
 ## GAS ENDPOINT
 Note: all GAS calls are made by the PWA, not by you. You signal writes via action blocks (Steps 7-8); the PWA executes them and injects results as [SYSTEM] messages.
 
-URL: https://script.google.com/macros/s/AKfycbz4GDiE8uFIq8yRiepnlbog328bKpZXdJd13r-15EJnki61PwbMQ0Au8z73b0IOW-rD/exec
+URL: https://script.google.com/macros/s/AKfycbwKjn7_T4YTRJAikpZnGQMQGR2PCHplpYBUgyIKdsCNLK5J7Iq_qZyzJq1NSrN-XtGl/exec
 
 ### doGet — read data
 GET ?month=M&year=Y
