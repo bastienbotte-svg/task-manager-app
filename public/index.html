@@ -1805,7 +1805,6 @@ function sendChatMsg() {
   var text    = (input.value || '').trim();
   if (!text && !chatFileData) return;
 
-  var displayContent = text || 'Here is my ING bank statement. Please process it.';
   var pdfText = null;
 
   if (chatFileData) {
@@ -1825,6 +1824,8 @@ function sendChatMsg() {
     chatFileData = null;
     renderChatFileBar();
   }
+
+  var displayContent = pdfText || text;
 
   input.value = '';
   chatInputResize(input);
@@ -1847,9 +1848,9 @@ function sendChatMsg() {
       var dupCtx = '[EXISTING TRANSACTIONS FOR DUPLICATE CHECK — ' + allTx.length + ' transactions]\n' +
         (allTx.length ? allTx.map(function(t) { return t.Date + '|' + t.Merchant + '|' + t.Amount; }).join('\n') : '(none)') +
         '\n[END CONTEXT]';
-      doApiCall(dupCtx + '\n\n' + displayContent + '\n\n--- ING BANK STATEMENT ---\n' + pdfText + '\n--- END OF STATEMENT ---');
+      doApiCall(dupCtx + '\n\n' + pdfText);
     }).catch(function() {
-      doApiCall(displayContent + '\n\n--- ING BANK STATEMENT ---\n' + pdfText + '\n--- END OF STATEMENT ---');
+      doApiCall(pdfText);
     });
   } else {
     doApiCall(null);
