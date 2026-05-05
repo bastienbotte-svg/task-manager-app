@@ -1638,8 +1638,13 @@ function openFinanceChat() {
     var md   = results[0];
     var data = results[1];
 
+    // [1] doGet response
+    console.log('[chat] doGet categories:', (data.categories || []).length, (data.categories || []).map(function(c){return c['Name'];}));
+    console.log('[chat] doGet merchants:', (data.merchants || []).length, data.merchants);
+
     var match  = md.match(/```\n([\s\S]*?)\n```/);
     var system = match ? match[1] : md;
+    console.log('[chat] prompt regex matched:', !!match, '| raw md length:', md.length, '| extracted system length:', system.length);
 
     var catList = (data.categories || []).map(function(c) { return c['Name']; }).filter(Boolean).join('\n');
 
@@ -1650,8 +1655,13 @@ function openFinanceChat() {
     system = system.replace('{{MERCHANT_LIST}}', merchantList || '(none yet)');
     system = system.replace('{{CATEGORY_LIST}}', catList      || '(none yet)');
 
+    // [2] final system prompt
+    console.log('[chat] final system prompt (first 500 chars):', system.slice(0, 500));
+    console.log('[chat] {{MERCHANT_LIST}} still present:', system.includes('{{MERCHANT_LIST}}'));
+    console.log('[chat] {{CATEGORY_LIST}} still present:', system.includes('{{CATEGORY_LIST}}'));
+
     chatContext = { label: 'FINANCE · IMPORT', system: system };
-  }).catch(function() {});
+  }).catch(function(err) { console.error('[chat] openFinanceChat error:', err); });
 }
 
 function clearChat() {
@@ -1782,6 +1792,8 @@ function sendChatMsg() {
   };
   if (chatContext)  body.system    = chatContext.system;
   if (chatFileData) { body.fileBase64 = chatFileData.base64; chatFileData = null; renderChatFileBar(); }
+  // [3] document block check
+  console.log('[chat] sending — fileBase64 present:', !!body.fileBase64, '| length:', body.fileBase64 ? body.fileBase64.length : 0, '| system length:', body.system ? body.system.length : 0);
 
   fetch(GAS_FINANCE, { method: 'POST', body: JSON.stringify(body) })
     .then(function(r) { return r.json(); })
@@ -1808,7 +1820,10 @@ function handleChatFile(input) {
   if (!file) return;
   var reader = new FileReader();
   reader.onload = function(e) {
-    chatFileData = { base64: e.target.result.split(',')[1], name: file.name };
+    var b64 = e.target.result.split(',')[1];
+    // [3] base64 conversion
+    console.log('[chat] PDF loaded:', file.name, '| dataURL prefix:', e.target.result.slice(0, 40), '| base64 length:', b64 ? b64.length : 'EMPTY', '| first 40 chars:', b64 ? b64.slice(0, 40) : 'NONE');
+    chatFileData = { base64: b64, name: file.name };
     renderChatFileBar();
   };
   reader.readAsDataURL(file);
