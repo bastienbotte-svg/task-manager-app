@@ -215,16 +215,21 @@ function addTransaction(body) {
   if (!txSheet)  return { error: 'Transactions tab not found' };
   if (!catSheet) return { error: 'Categories tab not found' };
 
-  var category  = (body.category || '').trim();
+  // Case-insensitive field lookup so both body.category and body.Category work.
+  var norm = {};
+  Object.keys(body).forEach(function(k) { norm[k.toLowerCase()] = body[k]; });
+  function field(name) { return norm[name.toLowerCase()]; }
+
+  var category  = (field('category') || '').trim();
   var cats      = sheetToObjects(catSheet);
   var catExists = cats.some(function(c) {
     return c['Name'].toLowerCase() === category.toLowerCase();
   });
   if (!catExists) return { error: 'Category not found: ' + category };
 
-  var dateStr = (body.date || '').trim();
-  var month   = body.month;
-  var year    = body.year;
+  var dateStr = (field('date') || '').trim();
+  var month   = field('month');
+  var year    = field('year');
   if (!month || !year) {
     if (dateStr) {
       var parts = dateStr.split('-');
@@ -237,6 +242,8 @@ function addTransaction(body) {
     }
   }
 
+  Logger.log('addTransaction body: ' + JSON.stringify(body));
+
   var headers = getHeaders(txSheet);
   var newId   = getNextId(txSheet);
 
@@ -245,7 +252,7 @@ function addTransaction(body) {
       case 'ID':    return String(newId);
       case 'Month': return String(month);
       case 'Year':  return String(year);
-      default:      return body[h] !== undefined ? String(body[h]) : '';
+      default:      return field(h) !== undefined ? String(field(h)) : '';
     }
   });
 
@@ -542,9 +549,8 @@ function setupMerchantsTab() {
 }
 
 // handleChat — proxies a conversation to the Claude API.
-// body.messages  : [{role:'user'|'assistant', content:'...'}]
-// body.system    : optional system prompt string
-// body.fileBase64: optional base64-encoded PDF
+// body.messages: [{role:'user'|'assistant', content:'...'}]
+// body.system  : optional system prompt string
 function handleChat(body) {
   var apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
   if (!apiKey) return { error: 'ANTHROPIC_API_KEY not configured in Script Properties' };
@@ -552,21 +558,9 @@ function handleChat(body) {
   var messages = body.messages || [];
   var system   = body.system   || '';
 
-  var claudeMessages = [];
-  for (var i = 0; i < messages.length; i++) {
-    var m = messages[i];
-    if (i === messages.length - 1 && m.role === 'user' && body.fileBase64) {
-      claudeMessages.push({
-        role: 'user',
-        content: [
-          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: body.fileBase64 } },
-          { type: 'text', text: m.content || 'Please analyze this document.' }
-        ]
-      });
-    } else {
-      claudeMessages.push({ role: m.role, content: m.content });
-    }
-  }
+  var claudeMessages = messages.map(function(m) {
+    return { role: m.role, content: m.content };
+  });
 
   var resp = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
     method: 'post',

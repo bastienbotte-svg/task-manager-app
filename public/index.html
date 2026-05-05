@@ -1806,11 +1806,22 @@ function sendChatMsg() {
   if (!text && !chatFileData) return;
 
   var displayContent = text || 'Here is my ING bank statement. Please process it.';
-  var pdfText = null, fallbackBase64 = null;
+  var pdfText = null;
 
   if (chatFileData) {
-    if (chatFileData.text) { pdfText       = chatFileData.text; }
-    else                   { fallbackBase64 = chatFileData.base64; }
+    if (chatFileData.extracting) {
+      chatMessages.push({ role: 'system', content: 'PDF is still being read — wait for "(ready)" then send again.' });
+      renderChat();
+      return;
+    }
+    if (!chatFileData.text) {
+      chatMessages.push({ role: 'system', content: 'Could not read this PDF. Make sure it is a text-based (not scanned) PDF and try again.' });
+      chatFileData = null;
+      renderChatFileBar();
+      renderChat();
+      return;
+    }
+    pdfText = chatFileData.text;
     chatFileData = null;
     renderChatFileBar();
   }
@@ -1836,25 +1847,24 @@ function sendChatMsg() {
       var dupCtx = '[EXISTING TRANSACTIONS FOR DUPLICATE CHECK — ' + allTx.length + ' transactions]\n' +
         (allTx.length ? allTx.map(function(t) { return t.Date + '|' + t.Merchant + '|' + t.Amount; }).join('\n') : '(none)') +
         '\n[END CONTEXT]';
-      doApiCall(dupCtx + '\n\n' + displayContent + '\n\n--- ING BANK STATEMENT ---\n' + pdfText + '\n--- END OF STATEMENT ---', null);
+      doApiCall(dupCtx + '\n\n' + displayContent + '\n\n--- ING BANK STATEMENT ---\n' + pdfText + '\n--- END OF STATEMENT ---');
     }).catch(function() {
-      doApiCall(displayContent + '\n\n--- ING BANK STATEMENT ---\n' + pdfText + '\n--- END OF STATEMENT ---', null);
+      doApiCall(displayContent + '\n\n--- ING BANK STATEMENT ---\n' + pdfText + '\n--- END OF STATEMENT ---');
     });
   } else {
-    doApiCall(null, fallbackBase64);
+    doApiCall(null);
   }
 }
 
-function doApiCall(pdfApiContent, fallbackBase64) {
+function doApiCall(pdfApiContent) {
   var apiMessages = chatMessages.filter(function(m) { return m.role !== 'thinking'; }).map(function(m, i, arr) {
     if (m.role === 'system') return { role: 'user', content: '[SYSTEM] ' + m.content };
     if (i === arr.length - 1 && pdfApiContent) return { role: 'user', content: pdfApiContent };
     return m;
   });
   var body = { action: 'chat', messages: apiMessages };
-  if (chatContext)     body.system    = chatContext.system;
-  if (fallbackBase64) body.fileBase64 = fallbackBase64;
-  console.log('[chat] sending — pdfInMsg:', !!pdfApiContent, '| fallbackBase64:', !!fallbackBase64, '| msgs:', apiMessages.length);
+  if (chatContext) body.system = chatContext.system;
+  console.log('[chat] sending — pdfInMsg:', !!pdfApiContent, '| msgs:', apiMessages.length);
   fetch(GAS_FINANCE, { method: 'POST', body: JSON.stringify(body) })
     .then(function(r) { return r.json(); })
     .then(handleChatReply)
@@ -1951,7 +1961,7 @@ function autoContinueChat() {
   chatSending = true;
   document.getElementById('chat-send-btn').disabled = true;
   renderChat();
-  doApiCall(null, null);
+  doApiCall(null);
 }
 
 function finishSend() {
