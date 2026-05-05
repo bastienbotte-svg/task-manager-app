@@ -200,7 +200,7 @@ Anything else you'd like to know about this week's finances?"
 ---
 
 ## GAS ENDPOINT
-URL: https://script.google.com/macros/s/AKfycbxbGLnf7v7mMhg_0G-SQDOAom59jDxQLVoFJBLhprqwp45id37man_18GPnf84fPaqH/exec
+URL: https://script.google.com/macros/s/AKfycbxT3j5DHrjsut57H8TusYLwCUAeEgisis_i_Bj5W-2AF6OnkHmcM5PnNCB3w518vMU/exec
 
 ### doGet — read data
 GET ?month=M&year=Y

@@ -585,7 +585,7 @@ function handleChat(body) {
   });
 
   var data = JSON.parse(resp.getContentText());
-  if (data.error) return { error: data.error.message };
+  if (data.error) return { error: data.error.type + ': ' + data.error.message };
   if (!data.content || !data.content[0]) return { error: 'Empty response from Claude' };
   return { reply: data.content[0].text };
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tm-shell-v12';
+const CACHE_NAME = 'tm-shell-v13';
 const SHELL = ['/task-manager-app/', '/task-manager-app/style.css', '/task-manager-app/manifest.json'];
 
 self.addEventListener('install', (e) => {
