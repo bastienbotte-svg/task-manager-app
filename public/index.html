@@ -1660,25 +1660,41 @@ function openFinanceChat() {
   chatContextReady = false;
   chatDupTxCache   = [];
   chatContext      = { label: 'FINANCE · IMPORT', system: '' };
-  chatMessages.push({ role: 'system', content: 'Loading finance context...' });
   renderChat();
 
-  var prevMonth = finMonth === 1 ? 12 : finMonth - 1;
-  var prevYear  = finMonth === 1 ? finYear - 1 : finYear;
+  // Rolling 30-day window: determine which months to fetch
+  var today   = new Date();
+  var cutoff  = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+  var curM    = today.getMonth() + 1;
+  var curY    = today.getFullYear();
+  var cutM    = cutoff.getMonth() + 1;
+  var cutY    = cutoff.getFullYear();
+  var needPrev = (cutM !== curM || cutY !== curY);
 
-  Promise.all([
+  var fetches = [
     fetch('prompts/finance-agent.md').then(function(r) { return r.text(); }),
-    fetch(GAS_FINANCE + '?month=' + finMonth  + '&year=' + finYear ).then(function(r){return r.json();}).catch(function(){return {};}),
-    fetch(GAS_FINANCE + '?month=' + prevMonth + '&year=' + prevYear).then(function(r){return r.json();}).catch(function(){return {};})
-  ]).then(function(results) {
+    fetch(GAS_FINANCE + '?month=' + curM + '&year=' + curY).then(function(r){return r.json();}).catch(function(){return {};})
+  ];
+  if (needPrev) {
+    fetches.push(fetch(GAS_FINANCE + '?month=' + cutM + '&year=' + cutY).then(function(r){return r.json();}).catch(function(){return {};}));
+  }
+
+  Promise.all(fetches).then(function(results) {
     var md   = results[0];
     var curr = results[1];
-    var prev = results[2];
+    var prev = results[2] || {};
 
-    // Pre-cache transactions for duplicate check at send time
-    chatDupTxCache = [];
-    if (curr.transactions) chatDupTxCache = chatDupTxCache.concat(curr.transactions);
-    if (prev.transactions) chatDupTxCache = chatDupTxCache.concat(prev.transactions);
+    // Cache transactions within the 30-day window for duplicate check
+    var allTx = [];
+    if (curr.transactions) allTx = allTx.concat(curr.transactions);
+    if (prev.transactions) allTx = allTx.concat(prev.transactions);
+    chatDupTxCache = allTx.filter(function(t) {
+      if (!t.Date) return false;
+      var p = t.Date.split('-'); // DD-MM-YYYY
+      if (p.length !== 3) return false;
+      var d = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+      return d >= cutoff;
+    });
 
     var match  = md.match(/```\n([\s\S]*?)\n```/);
     var system = match ? match[1] : md;
@@ -1693,14 +1709,8 @@ function openFinanceChat() {
 
     chatContext      = { label: 'FINANCE · IMPORT', system: system };
     chatContextReady = true;
-
-    chatMessages = chatMessages.filter(function(m) { return m.content !== 'Loading finance context...'; });
-    var summary = (curr.categories || []).length + ' categories, ' + (curr.merchants || []).length + ' merchants loaded. Upload your bank statement.';
-    chatMessages.push({ role: 'system', content: summary });
-    renderChat();
   }).catch(function(err) {
     console.error('[chat] openFinanceChat error:', err);
-    chatMessages = chatMessages.filter(function(m) { return m.content !== 'Loading finance context...'; });
     chatMessages.push({ role: 'system', content: 'Failed to load finance context — please close and reopen the chat.' });
     renderChat();
   });
