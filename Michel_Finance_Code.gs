@@ -170,7 +170,10 @@ function doGet(e) {
       return { Category: name, Amount: String(amt) };
     });
 
-    return jsonOut({ transactions: transactions, budget: budgetForMonth, categories: cats });
+    var merchantSheet = ss.getSheetByName('Merchants');
+    var merchants = merchantSheet ? sheetToObjects(merchantSheet) : [];
+
+    return jsonOut({ transactions: transactions, budget: budgetForMonth, categories: cats, merchants: merchants });
   } catch (err) {
     return jsonOut({ error: err.toString() });
   }
@@ -191,6 +194,7 @@ function doPost(e) {
       case 'setMonthlyBudgets':  result = setMonthlyBudgets(body);  break;
       case 'updateCategoryOrder':result = updateCategoryOrder(body);break;
       case 'addInbox':           result = addInbox(body);           break;
+      case 'saveMerchant':       result = saveMerchant(body);       break;
       case 'chat':               result = handleChat(body);         break;
       default:                   result = { error: 'Unknown action: ' + action };
     }
@@ -479,6 +483,62 @@ function addInbox(body) {
 
   sheet.appendRow(row);
   return { success: true };
+}
+
+// saveMerchant — upserts a row in the Merchants tab by RawName.
+function saveMerchant(body) {
+  var ss    = getSpreadsheet();
+  var sheet = ss.getSheetByName('Merchants');
+  if (!sheet) return { error: 'Merchants tab not found. Run setupMerchantsTab() first.' };
+
+  var rawName = (body.rawName || '').trim();
+  if (!rawName) return { error: 'rawName is required' };
+
+  var HEADERS = ['RawName', 'Nickname', 'DefaultCategory', 'Ambiguous', 'Recurring', 'Frequency', 'PaymentsLeft'];
+  var lastRow = sheet.getLastRow();
+  var foundRow = -1;
+
+  if (lastRow >= 2) {
+    var values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+    for (var i = 0; i < values.length; i++) {
+      if (String(values[i][0]).trim().toLowerCase() === rawName.toLowerCase()) {
+        foundRow = i + 2;
+        break;
+      }
+    }
+  }
+
+  var row = HEADERS.map(function(h) {
+    switch (h) {
+      case 'RawName':         return rawName;
+      case 'Nickname':        return String(body.nickname        || '');
+      case 'DefaultCategory': return String(body.defaultCategory || '');
+      case 'Ambiguous':       return body.ambiguous  ? 'TRUE' : 'FALSE';
+      case 'Recurring':       return body.recurring  ? 'TRUE' : 'FALSE';
+      case 'Frequency':       return body.frequency  != null ? String(body.frequency)    : '';
+      case 'PaymentsLeft':    return body.paymentsLeft != null ? String(body.paymentsLeft) : '';
+      default:                return '';
+    }
+  });
+
+  if (foundRow !== -1) {
+    sheet.getRange(foundRow, 1, 1, HEADERS.length).setValues([row]);
+    return { success: true, updated: true };
+  }
+  sheet.appendRow(row);
+  return { success: true, created: true };
+}
+
+// setupMerchantsTab — one-time setup. Run manually from the GAS editor.
+function setupMerchantsTab() {
+  var ss = getSpreadsheet();
+  if (ss.getSheetByName('Merchants')) {
+    Logger.log('Merchants tab already exists.');
+    return;
+  }
+  var sheet = ss.insertSheet('Merchants');
+  sheet.appendRow(['RawName', 'Nickname', 'DefaultCategory', 'Ambiguous', 'Recurring', 'Frequency', 'PaymentsLeft']);
+  Logger.log('Merchants tab created.');
 }
 
 // handleChat — proxies a conversation to the Claude API.
