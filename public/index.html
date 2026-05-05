@@ -1942,6 +1942,11 @@ function executeWriteTransactions(txArr) {
     .then(function(r) { return r.json(); })
     .then(function(d) {
       chatMessages.pop();
+      if (!d.error) {
+        txArr.forEach(function(t) {
+          chatDupTxCache.push({ Date: t.Date, Merchant: t.Merchant, Amount: t.Amount });
+        });
+      }
       var msg = d.error
         ? 'Write failed: ' + d.error
         : d.count + ' transaction' + (d.count !== 1 ? 's' : '') + ' written.' +
