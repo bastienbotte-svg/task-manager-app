@@ -1232,23 +1232,27 @@ function loadFinChart(id,catName){
 function renderFinChart(el,history){
   var W=300,H=120,ml=34,mr=6,mt=14,mb=20,pw=W-ml-mr,ph=H-mt-mb;
   var maxVal=0;
-  history.forEach(function(p){if(p.budget>maxVal)maxVal=p.budget;if(p.tracked>maxVal)maxVal=p.tracked;});
+  history.forEach(function(p){if(p.budget*1.1>maxVal)maxVal=p.budget*1.1;if(p.tracked>maxVal)maxVal=p.tracked;});
   if(!maxVal)maxVal=100;
   var mag=Math.pow(10,Math.floor(Math.log10(maxVal)));
   maxVal=Math.ceil(maxVal*1.1/mag)*mag;
   var n=history.length;
   function xOf(i){return ml+(n<=1?pw/2:i*pw/(n-1));}
   function yOf(v){return mt+ph-(v/maxVal)*ph;}
-  var budPts='',trackPts='',dots='';
+  var bandUpper='',bandLower='',trackPts='',dots='';
   history.forEach(function(p,i){
-    var x=xOf(i);budPts+=x+','+yOf(p.budget)+' ';trackPts+=x+','+yOf(p.tracked)+' ';
+    var x=xOf(i);
+    bandUpper+=x+','+yOf(p.budget*1.1)+' ';
+    bandLower=x+','+yOf(p.budget*0.9)+' '+bandLower;
+    trackPts+=x+','+yOf(p.tracked)+' ';
     dots+='<circle cx="'+x+'" cy="'+yOf(p.tracked)+'" r="2.5" fill="#111"/>';
   });
+  var band='<polygon points="'+(bandUpper+bandLower).trim()+'" fill="rgba(0,0,0,0.07)" stroke="none"/>';
   var xLbls='';history.forEach(function(p,i){xLbls+='<text x="'+xOf(i)+'" y="'+(H-4)+'" font-size="8" fill="#aaa" text-anchor="middle">'+p.label+'</text>';});
   var guides='<line x1="'+ml+'" y1="'+mt+'" x2="'+(W-mr)+'" y2="'+mt+'" stroke="#f0f0ee" stroke-width="1"/><line x1="'+ml+'" y1="'+(mt+ph/2)+'" x2="'+(W-mr)+'" y2="'+(mt+ph/2)+'" stroke="#f0f0ee" stroke-width="1"/><line x1="'+ml+'" y1="'+(mt+ph)+'" x2="'+(W-mr)+'" y2="'+(mt+ph)+'" stroke="#f0f0ee" stroke-width="1"/>';
   var yLbls='<text x="'+(ml-4)+'" y="'+(mt+3)+'" font-size="8" fill="#aaa" text-anchor="end">'+Math.round(maxVal)+'</text><text x="'+(ml-4)+'" y="'+(mt+ph/2+3)+'" font-size="8" fill="#aaa" text-anchor="end">'+Math.round(maxVal/2)+'</text><text x="'+(ml-4)+'" y="'+(mt+ph+3)+'" font-size="8" fill="#aaa" text-anchor="end">0</text>';
-  var legend='<text x="'+(W-mr)+'" y="'+(mt-2)+'" font-size="7" fill="#bbb" text-anchor="end">-- budget \u00b7 tracked</text>';
-  el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;margin-top:8px">'+guides+yLbls+xLbls+legend+'<polyline points="'+budPts.trim()+'" stroke="#ccc" stroke-width="1.5" stroke-dasharray="4 2" fill="none"/><polyline points="'+trackPts.trim()+'" stroke="#111" stroke-width="1.5" fill="none"/>'+dots+'</svg>';
+  var legend='<text x="'+(W-mr)+'" y="'+(mt-2)+'" font-size="7" fill="#bbb" text-anchor="end">budget \u00b110% \u00b7 tracked</text>';
+  el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;margin-top:8px">'+guides+yLbls+xLbls+legend+band+'<polyline points="'+trackPts.trim()+'" stroke="#111" stroke-width="1.5" fill="none"/>'+dots+'</svg>';
 }
 
 /* ── FIN DRAG ── */
