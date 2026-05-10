@@ -2131,11 +2131,15 @@ function openGroceryChat(){
   chatContext={label:'GROCERY · '+grWeekLabel(grCurrentWeekStart),system:''};
   renderChat();
   var ws=grCurrentWeekStart;
+  function grStripMd(t){var m=t.match(/```\n([\s\S]*?)\n```/);return m?m[1]:t;}
   Promise.all([
     fetch(GAS_GROCERY+'?week_start='+ws).then(function(r){return r.json();}).catch(function(){return{};}),
-    fetch(GAS_GROCERY+'?action=getRecentMeals&weeks=4').then(function(r){return r.json();}).catch(function(){return{};})
+    fetch(GAS_GROCERY+'?action=getRecentMeals&weeks=4').then(function(r){return r.json();}).catch(function(){return{};}),
+    fetch('prompts/michel-index.md').then(function(r){return r.text();}).catch(function(){return '';}),
+    fetch('prompts/grocery/grocery-base.md').then(function(r){return r.text();}).catch(function(){return '';})
   ]).then(function(res){
-    var system=buildGrocerySystemPrompt(ws,res[0],res[1]);
+    var base=grStripMd(res[2])+'\n'+grStripMd(res[3]);
+    var system=buildGrocerySystemPrompt(ws,res[0],res[1],base);
     chatContext={label:'GROCERY · '+grWeekLabel(ws),system:system};
     chatContextReady=true;
     var opener='[SYSTEM: Briefly greet, show a 1-line summary of what is planned this week (or say nothing is planned), then ask: how many days are they shopping for, and is there anything they already have at home or want to skip. Be concise. No emojis.]';
@@ -2156,28 +2160,38 @@ function openGroceryChat(){
   }).catch(function(){chatContextReady=true;});
 }
 
-function buildGrocerySystemPrompt(ws,weekData,recentData){
-  var lines=[
-    'You are a grocery planning assistant for a family (two adults, toddler named Lucas).',
-    'Today: '+new Date().toISOString().slice(0,10)+'. Week: '+ws+'.',
-    '','PLANNED MEALS THIS WEEK:'
-  ];
-  var plan=weekData.meal_plan||[];
-  if(plan.length) plan.forEach(function(r){lines.push('- '+r['Day']+' | '+r['Audience']+' | '+r['Meal_Type']+': '+r['Meal_Name']+' ['+( r['Status']||'planned')+']');});
-  else lines.push('(none planned yet)');
-  lines.push('','CURRENT SHOPPING LIST:');
-  var list=weekData.shopping_list||[];
-  if(list.length) list.forEach(function(r){lines.push('- '+r['Item']+(r['Quantity']?' ('+r['Quantity']+' '+(r['Unit']||'')+')+':'')+( r['Checked']==='TRUE'?' [checked]':''));});
-  else lines.push('(empty)');
-  lines.push('','MEALS EATEN LAST 4 WEEKS (week_start | day | audience | type: meal):');
-  var recent=(recentData.meals)||[];
-  if(recent.length) recent.forEach(function(r){lines.push('- '+r['week_start']+' | '+r['day']+' | '+r['audience']+' | '+r['meal_type']+': '+r['meal_name']);});
-  else lines.push('(no history)');
-  lines.push('',
-    'You can: plan meals, generate/refine the shopping list, add items, answer frequency questions.',
-    'When generating a list, ask how many days first. Be concise. No emojis.'
-  );
-  return lines.join('\n');
+function buildGrocerySystemPrompt(ws,weekData,recentData,base){
+  function fmtMeals(meals){
+    if(!meals||!meals.length) return '(no meals in database)';
+    return meals.map(function(m){
+      var l=m['ID']+' | '+m['Name'];
+      if(m['Tags']) l+=' | tags:'+m['Tags'];
+      if(m['Season']) l+=' | season:'+m['Season'];
+      if(m['Repetition_Tier']) l+=' | tier:'+m['Repetition_Tier'];
+      if(m['ingredients']&&m['ingredients'].length){
+        l+='\n  ingredients: '+m['ingredients'].map(function(i){return (i['Quantity']?i['Quantity']+' ':'')+( i['Unit']?i['Unit']+' ':'')+i['Item'];}).join(', ');
+      }
+      return l;
+    }).join('\n');
+  }
+  function fmtPlan(plan){
+    if(!plan||!plan.length) return '(none planned yet)';
+    return plan.map(function(r){return r['Day']+' | '+r['Audience']+' | '+r['Meal_Type']+': '+r['Meal_Name']+' ['+(r['Status']||'planned')+']';}).join('\n');
+  }
+  function fmtHistory(rows){
+    if(!rows||!rows.length) return '(no history)';
+    return rows.map(function(r){return r['week_start']+' | '+r['day']+' | '+r['audience']+' | '+r['meal_type']+': '+r['meal_name'];}).join('\n');
+  }
+  function fmtList(list){
+    if(!list||!list.length) return '(empty)';
+    return list.map(function(r){return '- '+r['Item']+(r['Quantity']?' ('+r['Quantity']+' '+(r['Unit']||'')+')':'')+(r['Checked']==='TRUE'?' [checked]':'');}).join('\n');
+  }
+  var prefix='Today: '+new Date().toISOString().slice(0,10)+'. Week: '+ws+'.';
+  return prefix+'\n'+(base||'')
+    .replace('{{MEALS}}',fmtMeals(weekData.meals||[]))
+    .replace('{{MEAL_PLAN}}',fmtPlan(weekData.meal_plan||[]))
+    .replace('{{MEAL_HISTORY}}',fmtHistory((recentData.meals)||[]))
+    .replace('{{SHOPPING_LIST}}',fmtList(weekData.shopping_list||[]));
 }
 
 /* ── LOAD ALL ── */
@@ -2270,8 +2284,8 @@ function openFinanceChat() {
   var fetches = [
     Promise.all([
       fetch('prompts/michel-index.md').then(function(r) { return r.text(); }),
-      fetch('prompts/finance-base.md').then(function(r) { return r.text(); }),
-      fetch('prompts/finance-import.md').then(function(r) { return r.text(); })
+      fetch('prompts/finance/finance-base.md').then(function(r) { return r.text(); }),
+      fetch('prompts/finance/skills/finance-import.md').then(function(r) { return r.text(); })
     ]).then(function(parts) { return parts.map(stripMd).join('\n'); }),
     fetch(GAS_FINANCE + '?month=' + curM + '&year=' + curY).then(function(r){return r.json();}).catch(function(){return {};})
   ];
@@ -2531,7 +2545,8 @@ function doApiCall(pdfApiContent) {
   var body = { action: 'chat', messages: apiMessages };
   if (chatContext) body.system = chatContext.system;
   console.log('[chat] sending — pdfInMsg:', !!pdfApiContent, '| msgs:', apiMessages.length);
-  fetch(GAS_FINANCE, { method: 'POST', body: JSON.stringify(body) })
+  var gasEp=(chatContext&&chatContext.label&&chatContext.label.indexOf('GROCERY')===0)?GAS_GROCERY:GAS_FINANCE;
+  fetch(gasEp, { method: 'POST', body: JSON.stringify(body) })
     .then(function(r) { return r.json(); })
     .then(handleChatReply)
     .catch(function() {
@@ -2572,28 +2587,74 @@ function handleChatReply(d) {
     catch(e) { chatMessages.push({ role: 'system', content: 'Parse error: ' + e.message }); finishSend(); }
     return;
   }
+  var smp=extractBlock(reply,'SAVE_MEAL_PLAN');
+  if(smp){
+    chatMessages.push({role:'assistant',content:smp.rest||'Saving meal plan...'});
+    renderChat();
+    try{executeSaveMealPlan(JSON.parse(smp.content));}
+    catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
+    return;
+  }
+  var ssl=extractBlock(reply,'SAVE_SHOPPING_LIST');
+  if(ssl){
+    chatMessages.push({role:'assistant',content:ssl.rest||'Saving shopping list...'});
+    renderChat();
+    try{executeSaveShoppingList(JSON.parse(ssl.content));}
+    catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
+    return;
+  }
   var skillLoad = checkForSkillLoad(reply);
   if (skillLoad) {
     var cleanReply = reply.replace(/<LOAD_DOMAIN[^/]*\/>/, '').trim();
     if (cleanReply) chatMessages.push({ role: 'assistant', content: cleanReply });
     renderChat();
-    Promise.all([
-      fetch('prompts/' + skillLoad.domain + '-base.md').then(function(r) { return r.text(); }),
-      fetch('prompts/' + skillLoad.skill + '.md').then(function(r) { return r.text(); })
-    ]).then(function(parts) {
-      var extra = parts.map(function(t) { var m = t.match(/```\n([\s\S]*?)\n```/); return m ? m[1] : t; }).join('\n');
-      if (!chatContext) chatContext = { label: 'CHAT', system: '' };
-      chatContext.system += '\n' + extra;
-      chatMessages.push({ role: 'system', content: skillLoad.domain + '/' + skillLoad.skill + ' loaded' });
-      finishSend();
-    }).catch(function() {
-      chatMessages.push({ role: 'system', content: 'Failed to load ' + skillLoad.domain + '/' + skillLoad.skill });
-      finishSend();
-    });
+    fetch('prompts/'+skillLoad.domain+'/skills/'+skillLoad.skill+'.md')
+      .then(function(r){return r.text();})
+      .then(function(t){
+        var m=t.match(/```\n([\s\S]*?)\n```/); var skillContent=m?m[1]:t;
+        if(!chatContext) chatContext={label:'CHAT',system:''};
+        chatContext.system+='\n[SYSTEM: '+skillLoad.domain+'/'+skillLoad.skill+' loaded]\n\n'+skillContent;
+        chatMessages.push({role:'system',content:skillLoad.domain+'/'+skillLoad.skill+' loaded'});
+        finishSend();
+      }).catch(function(){
+        chatMessages.push({role:'system',content:'Failed to load '+skillLoad.domain+'/'+skillLoad.skill});
+        finishSend();
+      });
     return;
   }
   chatMessages.push({ role: 'assistant', content: reply });
   finishSend();
+}
+
+function executeSaveMealPlan(meals){
+  chatMessages.push({role:'thinking'});
+  chatSending=true; document.getElementById('chat-send-btn').disabled=true; renderChat();
+  fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'addMealPlan',meals:meals})})
+    .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+    .then(function(d){
+      chatMessages.pop();
+      var msg=d.error?'Save failed: '+d.error:'meal plan saved — '+(d.ids?d.ids.length:meals.length)+' meals written';
+      chatMessages.push({role:'system',content:msg});
+      finishSend();
+    });
+}
+
+function executeSaveShoppingList(items){
+  chatMessages.push({role:'thinking'});
+  chatSending=true; document.getElementById('chat-send-btn').disabled=true; renderChat();
+  fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'addShoppingItems',items:items,week_start:grCurrentWeekStart})})
+    .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+    .then(function(d){
+      chatMessages.pop();
+      var msg=d.error?'Save failed: '+d.error:'shopping list saved — '+(d.count||items.length)+' items written';
+      chatMessages.push({role:'system',content:msg});
+      if(!d.error){
+        if(!groceryWeekData) groceryWeekData={};
+        if(!groceryWeekData.shopping_list) groceryWeekData.shopping_list=[];
+        items.forEach(function(i){groceryWeekData.shopping_list.push({Item:i.Item||i.item,Quantity:String(i.Quantity||i.quantity||''),Unit:i.Unit||i.unit||'',Category:i.Category||i.category||'',Checked:'FALSE'});});
+      }
+      finishSend();
+    });
 }
 
 function executeWriteTransactions(txArr) {

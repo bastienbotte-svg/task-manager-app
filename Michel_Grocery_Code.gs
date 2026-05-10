@@ -160,7 +160,8 @@ function doPost(e) {
       case 'moveMealToHistory':     result = moveMealToHistory(body);     break;
       case 'removeMenuItem':        result = removeMenuItem(body);        break;
       case 'updateShoppingItem':    result = updateShoppingItem(body);    break;
-      case 'addShoppingItem':       result = addShoppingItem(body);       break;
+      case 'addShoppingItem':        result = addShoppingItem(body);        break;
+      case 'addShoppingItems':       result = addShoppingItems(body);       break;
       case 'generateShoppingList':  result = generateShoppingList(body);  break;
       case 'removeShoppingItem':    result = removeShoppingItem(body);    break;
       case 'addInbox':              result = addInbox(body);              break;
@@ -719,6 +720,38 @@ function generateShoppingList(body) {
   });
 
   return { success: true, week_start: weekStart, days: days, items_count: keys.length };
+}
+
+function addShoppingItems(body) {
+  var ss    = getSpreadsheet();
+  var sheet = ss.getSheetByName('Grocery_List');
+  if (!sheet) return { error: 'Grocery_List tab not found' };
+
+  var items     = body.items || [];
+  var weekStart = String(body.week_start || currentWeekStart()).trim();
+  if (!items.length) return { error: 'No items provided' };
+
+  var headers = getHeaders(sheet);
+  var nextId  = getNextId(sheet);
+
+  items.forEach(function(item, i) {
+    var row = headers.map(function(h) {
+      switch (h) {
+        case 'ID':         return String(nextId + i);
+        case 'Item':       return String(item['Item']     || item['item']     || '');
+        case 'Week_Start': return weekStart;
+        case 'Quantity':   return String(item['Quantity'] || item['quantity'] || '');
+        case 'Unit':       return String(item['Unit']     || item['unit']     || '');
+        case 'Category':   return String(item['Category'] || item['category'] || '');
+        case 'Source':     return String(item['Source']   || item['source']   || 'chat');
+        case 'Checked':    return 'FALSE';
+        default:           return '';
+      }
+    });
+    sheet.appendRow(row);
+  });
+
+  return { success: true, count: items.length };
 }
 
 function removeShoppingItem(body) {
