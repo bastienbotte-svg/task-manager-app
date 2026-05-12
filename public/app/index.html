@@ -152,7 +152,10 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .seg-tabs-main{display:flex;background:#f5f5f3;border-radius:9px;padding:3px;gap:2px;margin-bottom:12px}
 .seg-btn{flex:1;font-family:'Share Tech Mono',monospace;font-size:10px;color:#aaa;padding:6px 2px;text-align:center;border-radius:7px;cursor:pointer}
 .seg-btn.active{background:#111;color:#fff}
-.fin-view{display:none}.fin-view.active{display:block}
+.fin-content{position:relative;overflow:hidden;flex:1}
+.fin-view{position:absolute;inset:0;overflow-y:auto;display:none;scrollbar-width:none}.fin-view::-webkit-scrollbar{display:none}.fin-view.active{display:block}
+.gr-content{position:relative;overflow:hidden;flex:1}
+.gr-content .scroll-area{position:absolute;inset:0;flex:none}
 .grocery-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 24px;text-align:center}
 .grocery-icon{width:48px;height:48px;border-radius:50%;border:1.5px dashed #ddd;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
 .grocery-icon svg{width:22px;height:22px;stroke:#ccc;fill:none;stroke-width:1.5}
@@ -295,10 +298,12 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
       <div class="seg-btn" onclick="switchFinTab('chart',this)">CHART</div>
       <div class="seg-btn" onclick="switchFinTab('tx',this)">TRANSACTIONS</div>
     </div>
-    <div id="fin-exp" class="fin-view active"></div>
-    <div id="fin-dep" class="fin-view"></div>
-    <div id="fin-chart" class="fin-view"></div>
-    <div id="fin-tx" class="fin-view"></div>
+    <div id="fin-content" class="fin-content">
+      <div id="fin-exp" class="fin-view active"></div>
+      <div id="fin-dep" class="fin-view"></div>
+      <div id="fin-chart" class="fin-view"></div>
+      <div id="fin-tx" class="fin-view"></div>
+    </div>
   </div></div>
 </div>
 
@@ -310,6 +315,7 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
     <div class="cat-t" data-gr-tab="shopping" onclick="switchGrTab('shopping')">SHOPPING</div>
     <div class="cat-t" data-gr-tab="meals" onclick="switchGrTab('meals')">MEALS</div>
   </div>
+  <div id="gr-content" class="gr-content">
   <div class="scroll-area" id="gr-view-plan"><div class="content">
     <div class="month-nav">
       <div class="nav-btn" onclick="grPrevWeek()"><svg viewBox="0 0 12 12"><polyline points="8,2 4,6 8,10" fill="none" stroke="#888" stroke-width="2"/></svg></div>
@@ -345,6 +351,7 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
     </div>
     <div id="gr-meals-list"></div>
   </div></div>
+  </div><!-- /gr-content -->
 </div>
 
 <!-- TAB: CHAT -->
@@ -674,6 +681,19 @@ navBtns.forEach(function(btn) {
 
 window.addEventListener('resize', function() { updatePill(navBtns[navActiveIndex], true); });
 var catAnimating = false;
+function slideContent(el, dir, updateFn) {
+  el.style.transition = 'transform 350ms cubic-bezier(0.4,0,0.2,1)';
+  el.style.transform  = 'translateX(' + (-100 * dir) + '%)';
+  setTimeout(function() {
+    el.style.transition = 'none';
+    el.style.transform  = 'translateX(' + (100 * dir) + '%)';
+    updateFn();
+    requestAnimationFrame(function() { requestAnimationFrame(function() {
+      el.style.transition = 'transform 350ms cubic-bezier(0.34,1.56,0.64,1)';
+      el.style.transform  = 'translateX(0)';
+    }); });
+  }, 88);
+}
 function selectCat(el,cat){
   if(cat===currentCat||catAnimating)return;
   catAnimating=true;
@@ -1227,11 +1247,21 @@ function swD(id,tab,catName){
   var tch=document.getElementById(id+'_tch');if(tch)tch.classList.toggle('active',tab==='chart');
   if(tab==='chart'&&catName)loadFinChart(id,catName);
 }
+var FIN_TAB_ORDER = {exp:0,dep:1,chart:2,tx:3};
+var finCurrentTab  = 'exp';
+var finAnimating   = false;
 function switchFinTab(tab,btn){
-  document.querySelectorAll('.fin-view').forEach(function(v){v.classList.remove('active');});
-  document.getElementById('fin-'+tab).classList.add('active');
+  if(tab===finCurrentTab||finAnimating) return;
+  finAnimating=true;
+  var dir=(FIN_TAB_ORDER[tab]>FIN_TAB_ORDER[finCurrentTab])?1:-1;
   document.querySelectorAll('.seg-tabs-main .seg-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
+  slideContent(document.getElementById('fin-content'),dir,function(){
+    document.querySelectorAll('.fin-view').forEach(function(v){v.classList.remove('active');});
+    document.getElementById('fin-'+tab).classList.add('active');
+    finCurrentTab=tab;
+    setTimeout(function(){finAnimating=false;},360);
+  });
 }
 function changeFinMonth(delta){
   finMonth+=delta;
@@ -1543,6 +1573,7 @@ var grMealsLoaded   = false;
 var grSubTab        = 'plan';
 var grHistoryData   = [];
 var grRecentMealsCache = [];
+var grWeekCache        = {};
 var grPushSetupDone = false;
 var grLogCtx        = null;
 var grMealDetailCtx = null;
@@ -1572,6 +1603,15 @@ function loadGrocery(){
         });
       });
   }
+  if(grWeekCache[ws]){
+    groceryWeekData=grWeekCache[ws];
+    if(Array.isArray(groceryWeekData.meals)){grMealsData=groceryWeekData.meals;grMealsLoaded=true;}
+    if(Array.isArray(groceryWeekData.meal_history)&&groceryWeekData.meal_history.length) grHistoryData=groceryWeekData.meal_history;
+    renderGrCurrentTab();
+    checkUnknownMeals();
+    if(!grPushSetupDone){grPushSetupDone=true;setupPushNotifications();}
+    return;
+  }
   fetch(GAS_GROCERY+'?week_start='+ws)
     .then(function(r){return r.json();})
     .catch(function(){return{error:'fetch failed'};})
@@ -1583,6 +1623,7 @@ function loadGrocery(){
             else if(r['Checked']===false||r['Checked']==='false') r['Checked']='FALSE';
           });
         }
+        grWeekCache[ws]=data;
         groceryWeekData=data;
         if(Array.isArray(data.meals)){grMealsData=data.meals;grMealsLoaded=true;}
         if(Array.isArray(data.meal_history)&&data.meal_history.length) grHistoryData=data.meal_history;
@@ -1603,16 +1644,24 @@ function checkUnknownMeals(){
 
 function renderGrocery(){ renderGrWeek(); }
 
+var GR_TAB_ORDER  = {plan:0,history:1,shopping:2,meals:3};
+var grTabAnimating = false;
 function switchGrTab(tab){
-  grSubTab=tab;
+  if(tab===grSubTab||grTabAnimating) return;
+  grTabAnimating=true;
+  var dir=(GR_TAB_ORDER[tab]>GR_TAB_ORDER[grSubTab])?1:-1;
   document.querySelectorAll('#gr-subtab-strip .cat-t').forEach(function(el){
     el.classList.toggle('active',el.dataset.grTab===tab);
   });
-  document.getElementById('gr-view-plan').style.display     = tab==='plan'     ? '' : 'none';
-  document.getElementById('gr-view-history').style.display  = tab==='history'  ? '' : 'none';
-  document.getElementById('gr-view-shopping').style.display = tab==='shopping' ? '' : 'none';
-  document.getElementById('gr-view-meals').style.display    = tab==='meals'    ? '' : 'none';
-  renderGrCurrentTab();
+  slideContent(document.getElementById('gr-content'),dir,function(){
+    document.getElementById('gr-view-plan').style.display     = tab==='plan'     ? '' : 'none';
+    document.getElementById('gr-view-history').style.display  = tab==='history'  ? '' : 'none';
+    document.getElementById('gr-view-shopping').style.display = tab==='shopping' ? '' : 'none';
+    document.getElementById('gr-view-meals').style.display    = tab==='meals'    ? '' : 'none';
+    grSubTab=tab;
+    renderGrCurrentTab();
+    setTimeout(function(){grTabAnimating=false;},360);
+  });
 }
 
 function renderGrCurrentTab(){
@@ -1622,16 +1671,33 @@ function renderGrCurrentTab(){
   if(grSubTab==='meals')    renderGrMealsTab();
 }
 
+var grWeekAnimating = false;
 function grPrevWeek(){
+  if(grWeekAnimating) return;
+  grWeekAnimating=true;
   var p=grCurrentWeekStart.split('-');
   var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
-  d.setDate(d.getDate()-7); grCurrentWeekStart=grWeekStart(d); loadGrocery();
+  d.setDate(d.getDate()-7);
+  var nextWs=grWeekStart(d);
+  slideContent(document.getElementById('gr-content'),-1,function(){
+    grCurrentWeekStart=nextWs;
+    loadGrocery();
+    setTimeout(function(){grWeekAnimating=false;},360);
+  });
 }
 
 function grNextWeek(){
+  if(grWeekAnimating) return;
+  grWeekAnimating=true;
   var p=grCurrentWeekStart.split('-');
   var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
-  d.setDate(d.getDate()+7); grCurrentWeekStart=grWeekStart(d); loadGrocery();
+  d.setDate(d.getDate()+7);
+  var nextWs=grWeekStart(d);
+  slideContent(document.getElementById('gr-content'),1,function(){
+    grCurrentWeekStart=nextWs;
+    loadGrocery();
+    setTimeout(function(){grWeekAnimating=false;},360);
+  });
 }
 
 /* ── WEEK sub-tab ── */
@@ -2152,15 +2218,20 @@ function openGroceryChat(){
   chatContext={label:'GROCERY · '+grWeekLabel(grCurrentWeekStart),system:''};
   renderChat();
   var ws=grCurrentWeekStart;
+  var prevWsD=new Date(parseInt(ws.split('-')[0]),parseInt(ws.split('-')[1])-1,parseInt(ws.split('-')[2]));
+  prevWsD.setDate(prevWsD.getDate()-7);
+  var prevWs=grWeekStart(prevWsD);
   function grStripMd(t){var m=t.match(/```\n([\s\S]*?)\n```/);return m?m[1]:t;}
   Promise.all([
     fetch(GAS_GROCERY+'?week_start='+ws).then(function(r){return r.json();}).catch(function(){return{};}),
     fetch(GAS_GROCERY+'?action=getRecentMeals&weeks=3').then(function(r){return r.json();}).catch(function(){return{};}),
     fetch('prompts/michel-index.md').then(function(r){return r.text();}).catch(function(){return '';}),
-    fetch('prompts/grocery/grocery-base.md').then(function(r){return r.text();}).catch(function(){return '';})
+    fetch('prompts/grocery/grocery-base.md').then(function(r){return r.text();}).catch(function(){return '';}),
+    fetch(GAS_GROCERY+'?week_start='+prevWs).then(function(r){return r.json();}).catch(function(){return{};})
   ]).then(function(res){
     var base=grStripMd(res[2])+'\n'+grStripMd(res[3]);
-    var system=buildGrocerySystemPrompt(ws,res[0],res[1],base);
+    var prevWeekData=res[4]||{};
+    var system=buildGrocerySystemPrompt(ws,res[0],res[1],base,prevWeekData);
     chatContext={label:'GROCERY · '+grWeekLabel(ws),system:system};
     grRecentMealsCache=(res[1].meals||[]).map(function(r){
       return {Week_Start:r.week_start,Day:r.day,Audience:r.audience,Meal_Type:r.meal_type,Meal_Name:r.meal_name,Meal_ID:r.meal_id||'',ID:''};
@@ -2201,7 +2272,7 @@ function openGroceryChat(){
   }).catch(function(){chatContextReady=true;});
 }
 
-function buildGrocerySystemPrompt(ws,weekData,recentData,base){
+function buildGrocerySystemPrompt(ws,weekData,recentData,base,prevWeekData){
   function fmtMeals(meals){
     if(!meals||!meals.length) return '(no meals in database)';
     return meals.map(function(m){
@@ -2225,14 +2296,17 @@ function buildGrocerySystemPrompt(ws,weekData,recentData,base){
   }
   function fmtList(list){
     if(!list||!list.length) return '(empty)';
-    return list.map(function(r){return '- '+r['Item']+(r['Quantity']?' ('+r['Quantity']+' '+(r['Unit']||'')+')':'')+(r['Checked']==='TRUE'?' [checked]':'');}).join('\n');
+    return list.map(function(r){
+      return r['ID']+' | '+r['Week_Start']+' | '+r['Item']+(r['Quantity']?' ('+r['Quantity']+' '+(r['Unit']||'')+')':'')+(r['Checked']==='TRUE'?' [checked]':'');
+    }).join('\n');
   }
+  var combinedList=(weekData.shopping_list||[]).concat(prevWeekData&&prevWeekData.shopping_list?prevWeekData.shopping_list:[]);
   var prefix='Today: '+new Date().toISOString().slice(0,10)+'. Week: '+ws+'.';
   return prefix+'\n'+(base||'')
     .replace('{{MEALS}}',fmtMeals(weekData.meals||[]))
     .replace('{{MEAL_PLAN}}',fmtPlan(weekData.meal_plan||[]))
     .replace('{{MEAL_HISTORY}}',fmtHistory((recentData.meals)||[]))
-    .replace('{{SHOPPING_LIST}}',fmtList(weekData.shopping_list||[]));
+    .replace('{{SHOPPING_LIST}}',fmtList(combinedList));
 }
 
 /* ── LOAD ALL ── */
@@ -2751,6 +2825,7 @@ function executeSaveMealPlan(meals){
       chatMessages.pop();
       var msg=d.error?'Save failed: '+d.error:'meal plan saved — '+(d.ids?d.ids.length:meals.length)+' meals written';
       chatMessages.push({role:'system',content:msg});
+      if(!d.error) delete grWeekCache[grCurrentWeekStart];
       finishSend();
     });
 }
@@ -2777,6 +2852,7 @@ function executeUpdateShoppingWeek(data){
       chatMessages.pop();
       var msg=d.error?'Update failed: '+d.error:(d.count||0)+' items moved to current week';
       chatMessages.push({role:'system',content:msg});
+      if(!d.error) grWeekCache={};
       chatMessages.push({role:'thinking'});
       renderChat();
       doApiCall(null);

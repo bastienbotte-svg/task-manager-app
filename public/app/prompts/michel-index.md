@@ -41,7 +41,8 @@ FINANCE (id: finance)
 GROCERY (id: grocery)
 - grocery-meal-planning  → plan meals, avoid repetition, weekly menu
 - grocery-shopping-list  → build shopping list from planned menu
-- grocery-confirm-plan → resolve unknown meal status from yesterday
+- grocery-confirm-plan   → resolve unknown meal status from yesterday
+- grocery-manage-list    → move unchecked items from previous weeks to current week
 
 TASKS (id: tasks)
 - tasks-query       → read and review Michel tasks [future]
