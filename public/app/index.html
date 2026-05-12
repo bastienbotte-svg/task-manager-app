@@ -659,6 +659,7 @@ function navigate(newIndex) {
   currentTab = newTab;
   document.getElementById('topbar-title').textContent = tabTitles[newTab];
   if (newTab === 'chat') openGeneralChat();
+  if (newTab === 'grocery') loadGrocery();
   var io = document.getElementById('inbox-overlay');
   if (io.classList.contains('open')) io.classList.remove('open');
   navActiveIndex = newIndex;
@@ -1574,6 +1575,12 @@ function loadGrocery(){
     .catch(function(){return{error:'fetch failed'};})
     .then(function(data){
       if(!data.error){
+        if(Array.isArray(data.shopping_list)){
+          data.shopping_list.forEach(function(r){
+            if(r['Checked']===true||r['Checked']==='true') r['Checked']='TRUE';
+            else if(r['Checked']===false||r['Checked']==='false') r['Checked']='FALSE';
+          });
+        }
         groceryWeekData=data;
         if(Array.isArray(data.meals)){grMealsData=data.meals;grMealsLoaded=true;}
         if(Array.isArray(data.meal_history)&&data.meal_history.length) grHistoryData=data.meal_history;
@@ -2840,6 +2847,9 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}
   var p=new URLSearchParams(location.search);
   if(p.get('tab')==='chat') window.addEventListener('load',function(){setTimeout(function(){navigate('chat');},400);});
 })();
+
+// Prefetch grocery data on page load so tab is instant on first visit
+window.addEventListener('load',function(){setTimeout(loadGrocery,800);});
 </script>
 <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js"></script>
