@@ -159,7 +159,8 @@ function doPost(e) {
       case 'savePushToken':         result = savePushToken(body);         break;
       case 'moveMealToHistory':     result = moveMealToHistory(body);     break;
       case 'removeMenuItem':        result = removeMenuItem(body);        break;
-      case 'updateShoppingItem':    result = updateShoppingItem(body);    break;
+      case 'updateShoppingItem':       result = updateShoppingItem(body);       break;
+      case 'updateShoppingItemWeek':  result = updateShoppingItemWeek(body);  break;
       case 'addShoppingItem':        result = addShoppingItem(body);        break;
       case 'addShoppingItems':       result = addShoppingItems(body);       break;
       case 'resolveMeals':           result = resolveMeals(body);           break;
@@ -609,6 +610,33 @@ function updateShoppingItem(body) {
   var checked = body.checked !== undefined ? body.checked : true;
   sheet.getRange(existing['_rowIndex'], checkedCol).setValue(checked ? 'TRUE' : 'FALSE');
   return { success: true, id: existing['ID'] };
+}
+
+function updateShoppingItemWeek(body) {
+  var ss    = getSpreadsheet();
+  var sheet = ss.getSheetByName('Grocery_List');
+  if (!sheet) return { error: 'Grocery_List tab not found' };
+
+  var ids       = body.ids || [];
+  var weekStart = String(body.week_start || '').trim();
+  if (!ids.length || !weekStart) return { error: 'Missing required fields: ids, week_start' };
+
+  var headers      = getHeaders(sheet);
+  var weekStartCol = headers.indexOf('Week_Start') + 1;
+  if (weekStartCol === 0) return { error: 'Week_Start column not found' };
+
+  var allRows = sheetToObjects(sheet);
+  var idStrs  = ids.map(function(id) { return String(id); });
+  var count   = 0;
+
+  allRows.forEach(function(r) {
+    if (idStrs.indexOf(String(r['ID'])) !== -1) {
+      sheet.getRange(r['_rowIndex'], weekStartCol).setValue(weekStart);
+      count++;
+    }
+  });
+
+  return { success: true, count: count };
 }
 
 function addShoppingItem(body) {

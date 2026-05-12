@@ -227,6 +227,8 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .chat-choices{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;max-width:85%}
 .chat-choice-btn{font-family:'Share Tech Mono',monospace;font-size:10px;color:#111;background:#fff;border:1.5px solid #111;border-radius:8px;padding:6px 10px;cursor:pointer}
 .chat-choice-btn:hover{background:#111;color:#fff}
+.chat-choice-btn.selected{background:#111;color:#fff}
+.chat-choice-btn:disabled{opacity:0.35;cursor:default}
 #chat-input-bar{flex-shrink:0;border-top:1px solid #eee;padding:10px 14px 12px;background:#fff}
 #chat-file-indicator{display:none;align-items:center;gap:6px;margin-bottom:6px;font-family:'Share Tech Mono',monospace;font-size:9px;color:#888}
 .chat-file-clear{background:none;border:none;cursor:pointer;font-size:13px;color:#bbb;padding:0;line-height:1}
@@ -552,7 +554,7 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 var GAS_TASKS   = 'https://script.google.com/macros/s/AKfycbyG5nZqmwr9Rd5oN2wMX2_ZCOCGa6VSwId92LjuJMYPXii61UgAM-TGFk2tfSJL8iSR/exec';
 var GAS_FINANCE = 'https://script.google.com/macros/s/AKfycbzpUstd1IBoVAwesamvakKyp9TA9Q5UQBd-5eK9EfW054bwVrdNQ8eJdFtDhVW4zAkF/exec';
 var GAS_HABITS  = 'https://script.google.com/macros/s/AKfycbyMcx_UAJrf2Cv0KGehO5spLEpUndaxG2L9NV5sgWHhvbtHtTJGNqVxX85YfPl1QqZr/exec';
-var GAS_GROCERY = 'https://script.google.com/macros/s/AKfycbwY0kKeskSvNPSHdIr6LWkVYWKjTLm6dkoWkEOTCd0Enyy0VNS10jBUAR7tt1cPxndZgw/exec';
+var GAS_GROCERY = 'https://script.google.com/macros/s/AKfycbwpIaSiuLAhKwVh0yCup44-q_NcUD2iUsvEKlU5i70hYkFNhYH4G1_CTdFRlJOZLFn_tA/exec';
 
 /* ── PDF TEXT EXTRACTION ── */
 if (typeof pdfjsLib !== 'undefined') {
@@ -2283,6 +2285,7 @@ var chatFileData      = null;
 var chatSending       = false;
 var pendingTxImport   = null;
 var chatContextReady  = true;
+var chatMultiselect   = null;
 var chatDupTxCache    = [];
 var chatHasWritten    = false;
 
@@ -2432,6 +2435,15 @@ function parseChoices(text) {
   return { question: question, options: options };
 }
 
+function parseMultiselect(text) {
+  var match = text.match(/MULTISELECT::(.+)/);
+  if (!match) return null;
+  var options = match[1].split('|').map(function(o) {
+    return o.trim().replace(/^\[|\]$/g, '');
+  });
+  return { options: options };
+}
+
 function renderChat() {
   var bar = document.getElementById('chat-context-bar');
   var lbl = document.getElementById('chat-context-label');
@@ -2470,14 +2482,38 @@ function renderChat() {
         html += '</div>';
         if (after) html += '<div class="chat-msg chat-assistant">' + formatChatMsg(after) + '</div>';
       } else {
-        html += '<div class="chat-msg chat-assistant">' + formatChatMsg(m.content) + '</div>';
+        var ms = parseMultiselect(m.content);
+        if (ms) {
+          if (chatMultiselect === null) chatMultiselect = [];
+          var msLine  = m.content.match(/MULTISELECT::.+/)[0];
+          var msParts = m.content.split(msLine);
+          var msBefore = msParts[0].trim();
+          var msAfter  = msParts[1] ? msParts[1].trim() : '';
+          if (msBefore) html += '<div class="chat-msg chat-assistant">' + formatChatMsg(msBefore) + '</div>';
+          html += '<div class="chat-choices">';
+          ms.options.forEach(function(opt) {
+            var sel = chatMultiselect.indexOf(opt) !== -1;
+            html += '<button class="chat-choice-btn chat-multiselect-btn' + (sel ? ' selected' : '') + '" data-mselect="' + escC(opt) + '">' + escC(opt) + '</button>';
+          });
+          html += '</div>';
+          html += '<div class="chat-choices"><button class="chat-choice-btn chat-multiselect-confirm-btn"' + (chatMultiselect.length === 0 ? ' disabled' : '') + '>Confirm</button></div>';
+          if (msAfter) html += '<div class="chat-msg chat-assistant">' + formatChatMsg(msAfter) + '</div>';
+        } else {
+          html += '<div class="chat-msg chat-assistant">' + formatChatMsg(m.content) + '</div>';
+        }
       }
     }
   });
   container.innerHTML = html;
 
-  container.querySelectorAll('.chat-choice-btn').forEach(function(btn) {
+  container.querySelectorAll('.chat-choice-btn:not(.chat-multiselect-btn):not(.chat-multiselect-confirm-btn)').forEach(function(btn) {
     btn.addEventListener('click', function() { sendChoiceMsg(this.dataset.choice); });
+  });
+  container.querySelectorAll('.chat-multiselect-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() { toggleMultiselect(this.dataset.mselect); });
+  });
+  container.querySelectorAll('.chat-multiselect-confirm-btn').forEach(function(btn) {
+    btn.addEventListener('click', confirmMultiselect);
   });
 
   var importBtn = document.getElementById('chat-import-btn');
@@ -2495,6 +2531,28 @@ function sendChoiceMsg(text) {
   document.getElementById('chat-send-btn').disabled = true;
   renderChat();
   doApiCall(null);
+}
+
+function toggleMultiselect(opt) {
+  if (chatSending) return;
+  if (!chatMultiselect) chatMultiselect = [];
+  if (opt === 'All') {
+    chatMultiselect = chatMultiselect.indexOf('All') !== -1 ? [] : ['All'];
+  } else {
+    var allIdx = chatMultiselect.indexOf('All');
+    if (allIdx !== -1) chatMultiselect.splice(allIdx, 1);
+    var i = chatMultiselect.indexOf(opt);
+    if (i !== -1) chatMultiselect.splice(i, 1);
+    else chatMultiselect.push(opt);
+  }
+  renderChat();
+}
+
+function confirmMultiselect() {
+  if (chatSending || !chatMultiselect || !chatMultiselect.length) return;
+  var text = chatMultiselect.indexOf('All') !== -1 ? 'Move: All' : 'Move: ' + chatMultiselect.join(', ');
+  chatMultiselect = null;
+  sendChoiceMsg(text);
 }
 
 function importFinanceTx() {
@@ -2604,6 +2662,7 @@ function extractBlock(text, tag) {
 
 function handleChatReply(d) {
   chatMessages.pop(); // remove thinking
+  chatMultiselect = null;
   if (d.error) {
     chatMessages.push({ role: 'assistant', content: 'Error: ' + d.error });
     finishSend();
@@ -2647,6 +2706,14 @@ function handleChatReply(d) {
     chatMessages.push({role:'assistant',content:rm.rest||'Saving meal resolutions...'});
     renderChat();
     try{executeResolveMeals(JSON.parse(rm.content));}
+    catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
+    return;
+  }
+  var usw=extractBlock(reply,'UPDATE_SHOPPING_WEEK');
+  if(usw){
+    chatMessages.push({role:'assistant',content:usw.rest||'Updating shopping list...'});
+    renderChat();
+    try{executeUpdateShoppingWeek(JSON.parse(usw.content));}
     catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
     return;
   }
@@ -2698,6 +2765,21 @@ function executeResolveMeals(meals){
       var msg=d.error?'Save failed: '+d.error:'Meals updated — '+meals.length+' resolved.';
       chatMessages.push({role:'system',content:msg});
       finishSend();
+    });
+}
+
+function executeUpdateShoppingWeek(data){
+  chatMessages.push({role:'thinking'});
+  chatSending=true; document.getElementById('chat-send-btn').disabled=true; renderChat();
+  fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'updateShoppingItemWeek',ids:data.ids,week_start:data.week_start})})
+    .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+    .then(function(d){
+      chatMessages.pop();
+      var msg=d.error?'Update failed: '+d.error:(d.count||0)+' items moved to current week';
+      chatMessages.push({role:'system',content:msg});
+      chatMessages.push({role:'thinking'});
+      renderChat();
+      doApiCall(null);
     });
 }
 

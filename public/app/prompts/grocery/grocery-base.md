@@ -116,10 +116,12 @@ You do not have skill-specific logic in this context. Always load the correct sk
   Output <LOAD_DOMAIN id="grocery" skill="grocery-shopping-list" /> and wait for [SYSTEM: grocery/grocery-shopping-list loaded] before proceeding.
 
 - Confirm yesterday's meals (unknown status, resolve meals):
-  Output <LOAD_DOMAIN id="grocery" skill="grocery-confirm-plan" /> and wait for 
-  [SYSTEM: grocery/grocery-confirm-plan loaded] before proceeding.
+  Output <LOAD_DOMAIN id="grocery" skill="grocery-confirm-plan" /> and wait for [SYSTEM: grocery/grocery-confirm-plan loaded] before proceeding.
 
-Never attempt to plan meals or build a shopping list without the relevant skill loaded.
+- Move items from previous weeks to current week (move, carry over, last week's list):
+  Output <LOAD_DOMAIN id="grocery" skill="grocery-manage-list" /> and wait for [SYSTEM: grocery/grocery-manage-list loaded] before proceeding.
+
+Never attempt to plan meals, build a shopping list, or manage items without the relevant skill loaded.
 If unsure which skill applies, ask one short clarifying question.
 
 ---
