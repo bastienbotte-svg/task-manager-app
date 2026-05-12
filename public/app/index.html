@@ -2376,73 +2376,53 @@ function openGeneralChat() {
     .catch(function(err) { console.error('[chat] openGeneralChat error:', err); });
 }
 
+function buildFinanceContext(onReady) {
+  var today  = new Date();
+  var cutoff = new Date(today.getTime() - 30*24*60*60*1000);
+  var curM = today.getMonth()+1, curY = today.getFullYear();
+  var cutM = cutoff.getMonth()+1, cutY = cutoff.getFullYear();
+  var needPrev = (cutM !== curM || cutY !== curY);
+  function stripMd(t){var m=t.match(/```\n([\s\S]*?)\n```/);return m?m[1]:t;}
+  var fetches=[
+    Promise.all([
+      fetch('prompts/michel-index.md').then(function(r){return r.text();}),
+      fetch('prompts/finance/finance-base.md').then(function(r){return r.text();}),
+      fetch('prompts/finance/skills/finance-import.md').then(function(r){return r.text();})
+    ]).then(function(parts){return parts.map(stripMd).join('\n');}),
+    fetch(GAS_FINANCE+'?month='+curM+'&year='+curY).then(function(r){return r.json();}).catch(function(){return{};})
+  ];
+  if(needPrev) fetches.push(fetch(GAS_FINANCE+'?month='+cutM+'&year='+cutY).then(function(r){return r.json();}).catch(function(){return{};}));
+  Promise.all(fetches).then(function(results){
+    var curr=results[1],prev=results[2]||{};
+    var allTx=[];
+    if(curr.transactions) allTx=allTx.concat(curr.transactions);
+    if(prev.transactions) allTx=allTx.concat(prev.transactions);
+    chatDupTxCache=allTx.filter(function(t){
+      if(!t.Date) return false;
+      var p=t.Date.split('-');if(p.length!==3) return false;
+      var d=new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
+      return d>=cutoff;
+    });
+    var system=results[0];
+    var catList=(curr.categories||[]).map(function(c){return c['Name'];}).filter(Boolean).join('\n');
+    var merchantList=(curr.merchants||[]).map(function(m){
+      return [m['RawName'],m['Nickname'],m['DefaultCategory'],m['Ambiguous'],m['Recurring'],m['Frequency']||'null',m['PaymentsLeft']||'null'].join(' | ');
+    }).join('\n');
+    system=system.replace('{{MERCHANT_LIST}}',merchantList||'(none yet)');
+    system=system.replace('{{CATEGORY_LIST}}',catList||'(none yet)');
+    chatContext={label:'FINANCE · IMPORT',system:system};
+    chatContextReady=true;
+    onReady();
+  }).catch(function(){onReady();});
+}
+
 function openFinanceChat() {
   navigate(4);
-  chatMessages     = [];
-  chatFileData     = null;
-  pendingTxImport  = null;
-  chatContextReady = false;
-  chatDupTxCache   = [];
-  chatHasWritten   = false;
-  chatContext      = { label: 'FINANCE · IMPORT', system: '' };
+  chatMessages=[]; chatFileData=null; pendingTxImport=null;
+  chatContextReady=false; chatDupTxCache=[]; chatHasWritten=false;
+  chatContext={label:'FINANCE · IMPORT',system:''};
   renderChat();
-
-  // Rolling 30-day window: determine which months to fetch
-  var today   = new Date();
-  var cutoff  = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-  var curM    = today.getMonth() + 1;
-  var curY    = today.getFullYear();
-  var cutM    = cutoff.getMonth() + 1;
-  var cutY    = cutoff.getFullYear();
-  var needPrev = (cutM !== curM || cutY !== curY);
-
-  function stripMd(text) { var m = text.match(/```\n([\s\S]*?)\n```/); return m ? m[1] : text; }
-
-  var fetches = [
-    Promise.all([
-      fetch('prompts/michel-index.md').then(function(r) { return r.text(); }),
-      fetch('prompts/finance/finance-base.md').then(function(r) { return r.text(); }),
-      fetch('prompts/finance/skills/finance-import.md').then(function(r) { return r.text(); })
-    ]).then(function(parts) { return parts.map(stripMd).join('\n'); }),
-    fetch(GAS_FINANCE + '?month=' + curM + '&year=' + curY).then(function(r){return r.json();}).catch(function(){return {};})
-  ];
-  if (needPrev) {
-    fetches.push(fetch(GAS_FINANCE + '?month=' + cutM + '&year=' + cutY).then(function(r){return r.json();}).catch(function(){return {};}));
-  }
-
-  Promise.all(fetches).then(function(results) {
-    var curr = results[1];
-    var prev = results[2] || {};
-
-    // Cache transactions within the 30-day window for duplicate check
-    var allTx = [];
-    if (curr.transactions) allTx = allTx.concat(curr.transactions);
-    if (prev.transactions) allTx = allTx.concat(prev.transactions);
-    chatDupTxCache = allTx.filter(function(t) {
-      if (!t.Date) return false;
-      var p = t.Date.split('-'); // DD-MM-YYYY
-      if (p.length !== 3) return false;
-      var d = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
-      return d >= cutoff;
-    });
-
-    var system = results[0];
-
-    var catList = (curr.categories || []).map(function(c) { return c['Name']; }).filter(Boolean).join('\n');
-    var merchantList = (curr.merchants || []).map(function(m) {
-      return [m['RawName'], m['Nickname'], m['DefaultCategory'], m['Ambiguous'], m['Recurring'], m['Frequency'] || 'null', m['PaymentsLeft'] || 'null'].join(' | ');
-    }).join('\n');
-
-    system = system.replace('{{MERCHANT_LIST}}', merchantList || '(none yet)');
-    system = system.replace('{{CATEGORY_LIST}}', catList      || '(none yet)');
-
-    chatContext      = { label: 'FINANCE · IMPORT', system: system };
-    chatContextReady = true;
-  }).catch(function(err) {
-    console.error('[chat] openFinanceChat error:', err);
-    chatMessages.push({ role: 'system', content: 'Failed to load finance context — please close and reopen the chat.' });
-    renderChat();
-  });
+  buildFinanceContext(function(){renderChat();});
 }
 
 function clearChat() {
@@ -2702,7 +2682,15 @@ function sendChatMsg() {
     var dupCtx = '[EXISTING TRANSACTIONS FOR DUPLICATE CHECK — ' + chatDupTxCache.length + ' transactions]\n' +
       (chatDupTxCache.length ? chatDupTxCache.map(function(t) { return t.Date + '|' + t.Merchant + '|' + t.Amount; }).join('\n') : '(none)') +
       '\n[END CONTEXT]';
-    doApiCall(dupCtx + '\n\n' + pdfText);
+    var financeReady = chatContext && chatContext.system && chatContext.system.indexOf('[SKILL: finance-import]') !== -1;
+    if (financeReady) {
+      doApiCall(dupCtx + '\n\n' + pdfText);
+    } else {
+      buildFinanceContext(function() {
+        renderChat();
+        doApiCall(dupCtx + '\n\n' + pdfText);
+      });
+    }
   } else {
     doApiCall(null);
   }
