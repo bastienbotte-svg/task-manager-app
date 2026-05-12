@@ -162,6 +162,7 @@ function doPost(e) {
       case 'updateShoppingItem':    result = updateShoppingItem(body);    break;
       case 'addShoppingItem':        result = addShoppingItem(body);        break;
       case 'addShoppingItems':       result = addShoppingItems(body);       break;
+      case 'resolveMeals':           result = resolveMeals(body);           break;
       case 'generateShoppingList':  result = generateShoppingList(body);  break;
       case 'removeShoppingItem':    result = removeShoppingItem(body);    break;
       case 'addInbox':              result = addInbox(body);              break;
@@ -771,6 +772,28 @@ function removeShoppingItem(body) {
   return { success: true };
 }
 
+function resolveMeals(body) {
+  var meals = body.meals || [];
+  if (!meals.length) return { error: 'No meals provided' };
+
+  var results = [];
+  meals.forEach(function(m) {
+    var id         = String(m.id         || '').trim();
+    var resolution = String(m.resolution || '').trim();
+    if (!id || !resolution) { results.push({ id: id, error: 'Missing id or resolution' }); return; }
+
+    if (resolution === 'confirmed') {
+      results.push({ id: id, result: moveMealToHistory({ meal_plan_id: id }) });
+    } else if (resolution === 'skipped') {
+      results.push({ id: id, result: updateMealPlanStatus({ id: id, status: 'skipped' }) });
+    } else {
+      results.push({ id: id, error: 'Unknown resolution: ' + resolution });
+    }
+  });
+
+  return { success: true, results: results };
+}
+
 function addMealHistory(body) {
   var ss    = getSpreadsheet();
   var sheet = ss.getSheetByName('Meal_History');
@@ -966,6 +989,22 @@ function confirmYesterdayMeals() {
       'Meal check needed',
       unknownCount + ' meal' + (unknownCount > 1 ? 's differ' : ' differs') + ' from plan — open the app to clarify.'
     );
+  }
+
+  var yesterdayPlan = planRows.filter(function(r) {
+    return r['Week_Start'] === yesterdayWS && r['Day'] === yesterdayName;
+  });
+  if (yesterdayPlan.length > 0) {
+    var histAfter = sheetToObjects(histSheet).filter(function(r) {
+      return r['Week_Start'] === yesterdayWS && r['Day'] === yesterdayName;
+    });
+    var missing = yesterdayPlan.length - histAfter.length;
+    if (missing > 0) {
+      sendPushNotification(
+        'Meals not logged',
+        missing + ' meal' + (missing > 1 ? 's' : '') + ' from yesterday still need to be logged.'
+      );
+    }
   }
 }
 

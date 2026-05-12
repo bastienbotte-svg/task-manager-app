@@ -552,7 +552,7 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 var GAS_TASKS   = 'https://script.google.com/macros/s/AKfycbyG5nZqmwr9Rd5oN2wMX2_ZCOCGa6VSwId92LjuJMYPXii61UgAM-TGFk2tfSJL8iSR/exec';
 var GAS_FINANCE = 'https://script.google.com/macros/s/AKfycbzpUstd1IBoVAwesamvakKyp9TA9Q5UQBd-5eK9EfW054bwVrdNQ8eJdFtDhVW4zAkF/exec';
 var GAS_HABITS  = 'https://script.google.com/macros/s/AKfycbyMcx_UAJrf2Cv0KGehO5spLEpUndaxG2L9NV5sgWHhvbtHtTJGNqVxX85YfPl1QqZr/exec';
-var GAS_GROCERY = 'https://script.google.com/macros/s/AKfycbyKOoy4X7m-jKDzezDfsXprlx97mhjnhQgU4yLk1KTCFs015Y9sFx32Ah0XJ8q1RsObrw/exec';
+var GAS_GROCERY = 'https://script.google.com/macros/s/AKfycbwY0kKeskSvNPSHdIr6LWkVYWKjTLm6dkoWkEOTCd0Enyy0VNS10jBUAR7tt1cPxndZgw/exec';
 
 /* ── PDF TEXT EXTRACTION ── */
 if (typeof pdfjsLib !== 'undefined') {
@@ -1539,6 +1539,7 @@ var grMealsData     = [];
 var grMealsLoaded   = false;
 var grSubTab        = 'plan';
 var grHistoryData   = [];
+var grRecentMealsCache = [];
 var grPushSetupDone = false;
 var grLogCtx        = null;
 var grMealDetailCtx = null;
@@ -1557,14 +1558,25 @@ function grWeekLabel(ws){
 }
 
 function loadGrocery(){
-  fetch(GAS_GROCERY+'?week_start='+grCurrentWeekStart)
+  var ws=grCurrentWeekStart;
+  var cachedHist=grRecentMealsCache.filter(function(r){return r['Week_Start']===ws;});
+  if(cachedHist.length){grHistoryData=cachedHist;if(grSubTab==='history')renderGrHistory();}
+  if(!grRecentMealsCache.length){
+    fetch(GAS_GROCERY+'?action=getRecentMeals&weeks=3').then(function(r){return r.json();}).catch(function(){return{};})
+      .then(function(d){
+        grRecentMealsCache=(d.meals||[]).map(function(r){
+          return {Week_Start:r.week_start,Day:r.day,Audience:r.audience,Meal_Type:r.meal_type,Meal_Name:r.meal_name,Meal_ID:r.meal_id||'',ID:''};
+        });
+      });
+  }
+  fetch(GAS_GROCERY+'?week_start='+ws)
     .then(function(r){return r.json();})
     .catch(function(){return{error:'fetch failed'};})
     .then(function(data){
       if(!data.error){
         groceryWeekData=data;
         if(Array.isArray(data.meals)){grMealsData=data.meals;grMealsLoaded=true;}
-        if(Array.isArray(data.meal_history)) grHistoryData=data.meal_history;
+        if(Array.isArray(data.meal_history)&&data.meal_history.length) grHistoryData=data.meal_history;
       }
       renderGrCurrentTab();
       checkUnknownMeals();
@@ -2134,29 +2146,49 @@ function openGroceryChat(){
   function grStripMd(t){var m=t.match(/```\n([\s\S]*?)\n```/);return m?m[1]:t;}
   Promise.all([
     fetch(GAS_GROCERY+'?week_start='+ws).then(function(r){return r.json();}).catch(function(){return{};}),
-    fetch(GAS_GROCERY+'?action=getRecentMeals&weeks=4').then(function(r){return r.json();}).catch(function(){return{};}),
+    fetch(GAS_GROCERY+'?action=getRecentMeals&weeks=3').then(function(r){return r.json();}).catch(function(){return{};}),
     fetch('prompts/michel-index.md').then(function(r){return r.text();}).catch(function(){return '';}),
     fetch('prompts/grocery/grocery-base.md').then(function(r){return r.text();}).catch(function(){return '';})
   ]).then(function(res){
     var base=grStripMd(res[2])+'\n'+grStripMd(res[3]);
     var system=buildGrocerySystemPrompt(ws,res[0],res[1],base);
     chatContext={label:'GROCERY · '+grWeekLabel(ws),system:system};
-    chatContextReady=true;
-    var opener='[SYSTEM: Briefly greet, show a 1-line summary of what is planned this week (or say nothing is planned), then ask: how many days are they shopping for, and is there anything they already have at home or want to skip. Be concise. No emojis.]';
-    chatMessages.push({role:'thinking'});
-    chatSending=true; document.getElementById('chat-send-btn').disabled=true;
-    renderChat();
-    fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'chat',messages:[{role:'user',content:opener}],system:system})})
-      .then(function(r){return r.json();})
-      .then(function(d){
-        chatMessages.pop();
-        chatMessages.push({role:'assistant',content:d.reply||'Ready to help with groceries. How many days are you shopping for?'});
-        chatSending=false; document.getElementById('chat-send-btn').disabled=false; renderChat();
-      }).catch(function(){
-        chatMessages.pop();
-        chatMessages.push({role:'assistant',content:'Ready to help with groceries. How many days are you shopping for, and anything you already have at home?'});
-        chatSending=false; document.getElementById('chat-send-btn').disabled=false; renderChat();
-      });
+    grRecentMealsCache=(res[1].meals||[]).map(function(r){
+      return {Week_Start:r.week_start,Day:r.day,Audience:r.audience,Meal_Type:r.meal_type,Meal_Name:r.meal_name,Meal_ID:r.meal_id||'',ID:''};
+    });
+    var unknowns=(res[0].meal_plan||[]).filter(function(r){return r['Status']==='unknown';});
+    function fireOpener(sys,opener,fallback){
+      chatMessages.push({role:'thinking'});
+      chatSending=true; document.getElementById('chat-send-btn').disabled=true;
+      renderChat();
+      fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'chat',messages:[{role:'user',content:opener}],system:sys})})
+        .then(function(r){return r.json();})
+        .then(function(d){
+          chatMessages.pop();
+          chatMessages.push({role:'assistant',content:d.reply||fallback});
+          chatSending=false; document.getElementById('chat-send-btn').disabled=false; renderChat();
+        }).catch(function(){
+          chatMessages.pop();
+          chatMessages.push({role:'assistant',content:fallback});
+          chatSending=false; document.getElementById('chat-send-btn').disabled=false; renderChat();
+        });
+    }
+    if(unknowns.length){
+      fetch('prompts/grocery/skills/grocery-confirm-plan.md')
+        .then(function(r){return r.text();})
+        .then(function(t){
+          var m=t.match(/```\n([\s\S]*?)\n```/); var skillContent=m?m[1]:t;
+          chatContext.system+='\n[SYSTEM: grocery/grocery-confirm-plan loaded]\n\n'+skillContent;
+          chatContextReady=true;
+          var list=unknowns.map(function(r){return r['ID']+': '+r['Day']+' '+r['Meal_Type']+' ('+r['Audience']+') — '+r['Meal_Name'];}).join('\n');
+          var opener='[SYSTEM: Meals from yesterday with Status=unknown:\n'+list+'\nAsk about each one using CHOICES::. Start immediately with the first meal — no greeting.]';
+          fireOpener(chatContext.system,opener,'Ready to confirm yesterday\'s meals.');
+        }).catch(function(){chatContextReady=true;});
+    } else {
+      chatContextReady=true;
+      var opener='[SYSTEM: Briefly greet, show a 1-line summary of what is planned this week (or say nothing is planned), then ask: how many days are they shopping for, and is there anything they already have at home or want to skip. Be concise. No emojis.]';
+      fireOpener(system,opener,'Ready to help with groceries. How many days are you shopping for, and anything you already have at home?');
+    }
   }).catch(function(){chatContextReady=true;});
 }
 
@@ -2603,6 +2635,14 @@ function handleChatReply(d) {
     catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
     return;
   }
+  var rm=extractBlock(reply,'RESOLVE_MEALS');
+  if(rm){
+    chatMessages.push({role:'assistant',content:rm.rest||'Saving meal resolutions...'});
+    renderChat();
+    try{executeResolveMeals(JSON.parse(rm.content));}
+    catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
+    return;
+  }
   var skillLoad = checkForSkillLoad(reply);
   if (skillLoad) {
     var cleanReply = reply.replace(/<LOAD_DOMAIN[^/]*\/>/, '').trim();
@@ -2615,7 +2655,9 @@ function handleChatReply(d) {
         if(!chatContext) chatContext={label:'CHAT',system:''};
         chatContext.system+='\n[SYSTEM: '+skillLoad.domain+'/'+skillLoad.skill+' loaded]\n\n'+skillContent;
         chatMessages.push({role:'system',content:skillLoad.domain+'/'+skillLoad.skill+' loaded'});
-        finishSend();
+        chatMessages.push({role:'thinking'});
+        renderChat();
+        doApiCall(null);
       }).catch(function(){
         chatMessages.push({role:'system',content:'Failed to load '+skillLoad.domain+'/'+skillLoad.skill});
         finishSend();
@@ -2634,6 +2676,19 @@ function executeSaveMealPlan(meals){
     .then(function(d){
       chatMessages.pop();
       var msg=d.error?'Save failed: '+d.error:'meal plan saved — '+(d.ids?d.ids.length:meals.length)+' meals written';
+      chatMessages.push({role:'system',content:msg});
+      finishSend();
+    });
+}
+
+function executeResolveMeals(meals){
+  chatMessages.push({role:'thinking'});
+  chatSending=true; document.getElementById('chat-send-btn').disabled=true; renderChat();
+  fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'resolveMeals',meals:meals})})
+    .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+    .then(function(d){
+      chatMessages.pop();
+      var msg=d.error?'Save failed: '+d.error:'Meals updated — '+meals.length+' resolved.';
       chatMessages.push({role:'system',content:msg});
       finishSend();
     });
