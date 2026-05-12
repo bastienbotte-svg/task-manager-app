@@ -2297,7 +2297,8 @@ function buildGrocerySystemPrompt(ws,weekData,recentData,base,prevWeekData){
   function fmtList(list){
     if(!list||!list.length) return '(empty)';
     return list.map(function(r){
-      return r['ID']+' | '+r['Week_Start']+' | '+r['Item']+(r['Quantity']?' ('+r['Quantity']+' '+(r['Unit']||'')+')':'')+(r['Checked']==='TRUE'?' [checked]':'');
+      var chk=r['Checked']===true||r['Checked']==='true'||r['Checked']==='TRUE';
+      return r['ID']+' | '+r['Week_Start']+' | '+r['Item']+(r['Quantity']?' ('+r['Quantity']+' '+(r['Unit']||'')+')':'')+(chk?' [checked]':'');
     }).join('\n');
   }
   var combinedList=(weekData.shopping_list||[]).concat(prevWeekData&&prevWeekData.shopping_list?prevWeekData.shopping_list:[]);

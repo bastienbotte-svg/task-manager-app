@@ -27,12 +27,8 @@ MULTISELECT::[Item 1]|[Item 2]|[Item 3]|All"
 
 Wait for the user to select one, several, or All.
 
-### Step 2 — Confirm
-"Moving [selected items] to this week ([current week_start]). Confirm?"
-CHOICES::Move these items?|Yes, move them|Cancel
-
-### Step 3 — Move items
-Once confirmed, output exactly this block:
+### Step 2 — Move items
+Output exactly this block immediately, no confirmation step:
 
 <UPDATE_SHOPPING_WEEK>
 {
@@ -43,7 +39,7 @@ Once confirmed, output exactly this block:
 
 The PWA will call GAS `updateShoppingItemWeek` and inject a [SYSTEM] confirmation.
 
-### Step 4 — Done
+### Step 3 — Done
 "Done — [X] items moved to this week.
 
 Anything else?"
