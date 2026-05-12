@@ -115,6 +115,10 @@ You do not have skill-specific logic in this context. Always load the correct sk
 - Shopping list (build list, what do I need to buy, generate groceries):
   Output <LOAD_DOMAIN id="grocery" skill="grocery-shopping-list" /> and wait for [SYSTEM: grocery/grocery-shopping-list loaded] before proceeding.
 
+- Confirm yesterday's meals (unknown status, resolve meals):
+  Output <LOAD_DOMAIN id="grocery" skill="grocery-confirm-plan" /> and wait for 
+  [SYSTEM: grocery/grocery-confirm-plan loaded] before proceeding.
+
 Never attempt to plan meals or build a shopping list without the relevant skill loaded.
 If unsure which skill applies, ask one short clarifying question.
 
