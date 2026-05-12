@@ -51,8 +51,7 @@ If a user suggests a category not in this list, flag it and ask them to pick fro
 ## GAS ENDPOINT
 All GAS calls are made by the PWA. You signal actions via structured blocks. The PWA executes and injects results as [SYSTEM] messages. Always wait for the [SYSTEM] confirmation before proceeding.
 
-URL: https://script.google.com/macros/s/AKfycbwKjn7_T4YTRJAikpZnGQMQGR2PCHplpYBUgyIKdsCNLK5J7Iq_qZyzJq1NSrN-XtGl/exec
-
+URL: https://script.google.com/macros/s/AKfycbxVXCs7ehKbwE-M62AlHiLc222Sd4Ms9bRIuVPhaaiYNeDUOzcV8FYromVAFSw_NhCp/exec
 doGet: GET ?month=M&year=Y
 Returns: { transactions, budget, categories, merchants }
 
