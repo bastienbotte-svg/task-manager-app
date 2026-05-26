@@ -88,6 +88,7 @@ function doGet(e) {
       case 'getShoppingList':  return jsonOut(getShoppingListData(e.parameter.week_start));
       case 'getRecentMeals':   return jsonOut(getRecentMealsData(parseInt(e.parameter.weeks || '4', 10)));
       case 'getItemFrequency': return jsonOut(getItemFrequencyData(e.parameter.item));
+      case 'getMealLists':     return jsonOut(getMealLists());
       default:                 return defaultGet(e);
     }
   } catch (err) {
@@ -138,7 +139,9 @@ function defaultGet(e) {
   var meal_history = allHist.filter(function(r) { return r['Week_Start'] === weekStart; });
   meal_history.forEach(function(r) { delete r['_rowIndex']; });
 
-  return jsonOut({ meals: meals, meal_plan: meal_plan, shopping_list: shopping_list, meal_history: meal_history });
+  var meal_lists = getMealLists();
+
+  return jsonOut({ meals: meals, meal_plan: meal_plan, shopping_list: shopping_list, meal_history: meal_history, meal_lists: meal_lists });
 }
 
 // ─── doPost ───────────────────────────────────────────────────────────────────
@@ -168,6 +171,9 @@ function doPost(e) {
       case 'removeShoppingItem':    result = removeShoppingItem(body);    break;
       case 'addInbox':              result = addInbox(body);              break;
       case 'chat':                  result = handleChat(body);            break;
+      case 'addMealListItem':       result = addMealListItem(body);       break;
+      case 'updateMealListCount':   result = updateMealListCount(body);   break;
+      case 'removeMealListItem':    result = removeMealListItem(body);    break;
       default:                      result = { error: 'Unknown action: ' + action };
     }
 
@@ -564,6 +570,7 @@ function moveMealToHistory(body) {
     planSheet.getRange(existing['_rowIndex'], statusCol).setValue('confirmed');
   }
 
+  applyMealConfirmation_(existing['Audience'], existing['Meal_Name']);
   return { success: true, history_id: histId };
 }
 
@@ -857,7 +864,164 @@ function addMealHistory(body) {
     }
   });
   sheet.appendRow(row);
+  applyMealConfirmation_(audience, mealName);
   return { success: true, id: newId };
+}
+
+// ─── Meal_Lists (Plan + Reserve, date-free) ──────────────────────────────────
+var MEAL_LISTS_HEADERS = ['ID','List_Type','Audience','Meal_ID','Meal_Name','Count','Created_At'];
+
+function ensureMealListsSheet() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('Meal_Lists');
+  if (!sheet) {
+    sheet = ss.insertSheet('Meal_Lists');
+    sheet.getRange(1, 1, 1, MEAL_LISTS_HEADERS.length).setValues([MEAL_LISTS_HEADERS]);
+  }
+  return sheet;
+}
+
+function getMealLists() {
+  var sheet = ensureMealListsSheet();
+  var rows  = sheetToObjects(sheet).map(function(r) {
+    delete r['_rowIndex'];
+    r['Count'] = parseInt(r['Count'] || '0', 10) || 0;
+    return r;
+  });
+  var plan    = rows.filter(function(r) { return String(r['List_Type']).toLowerCase() === 'plan';    });
+  var reserve = rows.filter(function(r) { return String(r['List_Type']).toLowerCase() === 'reserve'; });
+  return { plan: plan, reserve: reserve };
+}
+
+function resolveMealId_(mealName) {
+  var ss = getSpreadsheet();
+  var mealsSheet = ss.getSheetByName('Meals');
+  if (!mealsSheet) return '';
+  var found = '';
+  sheetToObjects(mealsSheet).forEach(function(m) {
+    if (m['Name'] && m['Name'].toLowerCase() === mealName.toLowerCase()) found = m['ID'];
+  });
+  return found;
+}
+
+// addMealListItem — body: {list_type, audience, meal_name, count?}
+// If a row with same list_type + audience + meal_name (case-insensitive) exists, increments Count.
+// Otherwise creates a new row.
+function addMealListItem(body) {
+  var sheet     = ensureMealListsSheet();
+  var listType  = String(body.list_type || '').toLowerCase().trim();
+  var audience  = String(body.audience  || '').trim();
+  var mealName  = String(body.meal_name || '').trim();
+  var addCount  = parseInt(body.count, 10);
+  if (isNaN(addCount) || addCount < 1) addCount = 1;
+
+  if (listType !== 'plan' && listType !== 'reserve') return { error: 'Invalid list_type' };
+  if (!audience || !mealName) return { error: 'Missing audience or meal_name' };
+
+  var headers  = getHeaders(sheet);
+  var countCol = headers.indexOf('Count') + 1;
+  var allRows  = sheetToObjects(sheet);
+  var existing = null;
+  allRows.forEach(function(r) {
+    if (String(r['List_Type']).toLowerCase() === listType
+     && r['Audience'] === audience
+     && r['Meal_Name'].toLowerCase() === mealName.toLowerCase()) {
+      existing = r;
+    }
+  });
+
+  if (existing) {
+    var newCount = (parseInt(existing['Count'] || '0', 10) || 0) + addCount;
+    sheet.getRange(existing['_rowIndex'], countCol).setValue(newCount);
+    return { success: true, id: existing['ID'], count: newCount, updated: true };
+  }
+
+  var newId  = getNextId(sheet);
+  var mealId = resolveMealId_(mealName);
+  var row = headers.map(function(h) {
+    switch (h) {
+      case 'ID':         return String(newId);
+      case 'List_Type':  return listType;
+      case 'Audience':   return audience;
+      case 'Meal_ID':    return mealId;
+      case 'Meal_Name':  return mealName;
+      case 'Count':      return String(addCount);
+      case 'Created_At': return now();
+      default:           return '';
+    }
+  });
+  sheet.appendRow(row);
+  return { success: true, id: newId, count: addCount, created: true };
+}
+
+// updateMealListCount — body: {id, count}. Count <= 0 deletes the row.
+function updateMealListCount(body) {
+  var sheet = ensureMealListsSheet();
+  var id    = String(body.id || '').trim();
+  var count = parseInt(body.count, 10);
+  if (!id) return { error: 'Missing id' };
+  if (isNaN(count)) return { error: 'Missing or invalid count' };
+
+  var headers  = getHeaders(sheet);
+  var countCol = headers.indexOf('Count') + 1;
+  var allRows  = sheetToObjects(sheet);
+  var existing = null;
+  allRows.forEach(function(r) { if (r['ID'] === id) existing = r; });
+  if (!existing) return { error: 'Meal_Lists row not found: ' + id };
+
+  if (count <= 0) {
+    sheet.deleteRow(existing['_rowIndex']);
+    return { success: true, deleted: true };
+  }
+  sheet.getRange(existing['_rowIndex'], countCol).setValue(count);
+  return { success: true, count: count };
+}
+
+function removeMealListItem(body) {
+  var sheet = ensureMealListsSheet();
+  var id    = String(body.id || '').trim();
+  if (!id) return { error: 'Missing id' };
+
+  var allRows  = sheetToObjects(sheet);
+  var existing = null;
+  allRows.forEach(function(r) { if (r['ID'] === id) existing = r; });
+  if (!existing) return { error: 'Meal_Lists row not found: ' + id };
+
+  sheet.deleteRow(existing['_rowIndex']);
+  return { success: true };
+}
+
+// applyMealConfirmation_ — called when a meal is logged in Meal_History.
+// Decrements one matching Reserve row (delete if Count hits 0).
+// Removes any matching Plan row entirely.
+function applyMealConfirmation_(audience, mealName) {
+  if (!audience || !mealName) return;
+  var sheet    = ensureMealListsSheet();
+  var headers  = getHeaders(sheet);
+  var countCol = headers.indexOf('Count') + 1;
+  var allRows  = sheetToObjects(sheet);
+
+  var reserveRow = null;
+  var planRow    = null;
+  allRows.forEach(function(r) {
+    if (r['Audience'] !== audience) return;
+    if (r['Meal_Name'].toLowerCase() !== mealName.toLowerCase()) return;
+    var lt = String(r['List_Type']).toLowerCase();
+    if (lt === 'reserve' && !reserveRow) reserveRow = r;
+    if (lt === 'plan'    && !planRow)    planRow    = r;
+  });
+
+  // Order matters: deleteRow shifts indexes. Delete higher row index first.
+  var deletions = [];
+  if (reserveRow) {
+    var cur = (parseInt(reserveRow['Count'] || '0', 10) || 0) - 1;
+    if (cur <= 0) deletions.push(reserveRow['_rowIndex']);
+    else sheet.getRange(reserveRow['_rowIndex'], countCol).setValue(cur);
+  }
+  if (planRow) deletions.push(planRow['_rowIndex']);
+
+  deletions.sort(function(a, b) { return b - a; });
+  deletions.forEach(function(idx) { sheet.deleteRow(idx); });
 }
 
 function savePushToken(body) {
@@ -968,86 +1132,3 @@ function handleChat(body) {
   return { reply: data.choices[0].message.content };
 }
 
-// ─── Time trigger ─────────────────────────────────────────────────────────────
-
-// confirmYesterdayMeals — run daily at 9am via a time-based trigger.
-// For each Meal_Plan row where Day = yesterday and Status = planned:
-//   - If no matching Meal_History entry exists → auto-move to history (status = confirmed)
-//   - If a matching entry already exists → set status = unknown
-function confirmYesterdayMeals() {
-  var ss        = getSpreadsheet();
-  var planSheet = ss.getSheetByName('Meal_Plan');
-  var histSheet = ss.getSheetByName('Meal_History');
-  if (!planSheet || !histSheet) return;
-
-  var yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  yesterday.setHours(0, 0, 0, 0);
-
-  var DAY_NAMES      = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  var yesterdayName  = DAY_NAMES[yesterday.getDay()];
-  var yesterdayWS    = weekStartForDate(yesterday);
-
-  var planRows     = sheetToObjects(planSheet);
-  var histRows     = sheetToObjects(histSheet);
-  var unknownCount = 0;
-
-  planRows.forEach(function(row) {
-    if (row['Day']        !== yesterdayName) return;
-    if (row['Week_Start'] !== yesterdayWS)   return;
-    if (row['Status']     !== 'planned')     return;
-
-    var histMatch = histRows.some(function(h) {
-      return h['Week_Start'] === row['Week_Start']
-          && h['Day']        === row['Day']
-          && h['Meal_Type']  === row['Meal_Type']
-          && h['Audience']   === row['Audience'];
-    });
-
-    if (!histMatch) {
-      moveMealToHistory({ meal_plan_id: row['ID'] });
-    } else {
-      updateMealPlanStatus({ id: row['ID'], status: 'unknown' });
-      unknownCount++;
-    }
-  });
-
-  if (unknownCount > 0) {
-    sendPushNotification(
-      'Meal check needed',
-      unknownCount + ' meal' + (unknownCount > 1 ? 's differ' : ' differs') + ' from plan — open the app to clarify.'
-    );
-  }
-
-  var yesterdayPlan = planRows.filter(function(r) {
-    return r['Week_Start'] === yesterdayWS && r['Day'] === yesterdayName;
-  });
-  if (yesterdayPlan.length > 0) {
-    var histAfter = sheetToObjects(histSheet).filter(function(r) {
-      return r['Week_Start'] === yesterdayWS && r['Day'] === yesterdayName;
-    });
-    var missing = yesterdayPlan.length - histAfter.length;
-    if (missing > 0) {
-      sendPushNotification(
-        'Meals not logged',
-        missing + ' meal' + (missing > 1 ? 's' : '') + ' from yesterday still need to be logged.'
-      );
-    }
-  }
-}
-
-// setupDailyTrigger — run once from the GAS editor to install the 9am trigger.
-function setupDailyTrigger() {
-  var triggers = ScriptApp.getProjectTriggers();
-  for (var i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === 'confirmYesterdayMeals') {
-      ScriptApp.deleteTrigger(triggers[i]);
-    }
-  }
-  ScriptApp.newTrigger('confirmYesterdayMeals')
-    .timeBased()
-    .everyDays(1)
-    .atHour(9)
-    .create();
-  return 'Daily 9am trigger created for confirmYesterdayMeals';
-}

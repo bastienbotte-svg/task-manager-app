@@ -205,6 +205,34 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .gr-ing-list{margin-top:4px}
 .gr-ing-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-top:1px solid #f8f8f8;font-family:'Share Tech Mono',monospace;font-size:10px;color:#111}
 .gr-meal-edit-btn{display:block;width:100%;margin-top:10px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#fff;background:#111;border:none;border-radius:8px;padding:8px;cursor:pointer;text-align:center}
+/* PLAN sub-tab: date-free Plan + Reserve sections */
+.icon-btn.plus-btn.active{background:#111;border-color:#111}
+.icon-btn.plus-btn.active svg{stroke:#fff}
+.gr-list-sec{margin-bottom:10px;background:#fff;border:1.5px solid #eee;border-radius:14px;overflow:hidden}
+.gr-list-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;cursor:pointer;user-select:none}
+.gr-list-hdr-l{display:flex;align-items:center;gap:8px}
+.gr-list-tag{font-family:'Share Tech Mono',monospace;font-size:8px;color:#aaa;letter-spacing:0.08em}
+.gr-list-title{font-family:'Share Tech Mono',monospace;font-size:11px;color:#111;letter-spacing:0.02em}
+.gr-list-count{font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa}
+.gr-list-chev{width:10px;height:10px;transition:transform 0.2s}
+.gr-list-sec.collapsed .gr-list-chev{transform:rotate(-90deg)}
+.gr-list-body{padding:2px 14px 10px}
+.gr-list-sec.collapsed .gr-list-body{display:none}
+.gr-list-empty{font-family:'Share Tech Mono',monospace;font-size:10px;color:#ccc;padding:6px 0}
+.gr-list-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid #f0f0ee}
+.gr-list-row:first-child{border-top:none}
+.gr-list-name{font-family:'Share Tech Mono',monospace;font-size:11px;color:#111;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-list-badge{font-family:'Share Tech Mono',monospace;font-size:9px;color:#aaa;background:#f5f5f3;border-radius:6px;padding:2px 7px;flex-shrink:0}
+.gr-list-ctrls{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.gr-list-ctrl{width:22px;height:22px;border:1px solid #e0e0de;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:11px;color:#111;padding:0;line-height:1}
+.gr-list-ctrl.del{color:#D85A30;border-color:#f0d8cf}
+.gr-list-add{display:flex;width:100%;margin-top:8px;font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;background:#f9f9f7;border:1px dashed #ddd;border-radius:8px;padding:7px;cursor:pointer;justify-content:center}
+/* HISTORY collapsible */
+.gr-day-block.collapsed .gr-day-body{display:none}
+.gr-day-block.collapsed .gr-day-hdr{margin-bottom:0}
+.gr-day-hdr{cursor:pointer}
+.gr-day-chev{width:10px;height:10px;margin-left:8px;transition:transform 0.2s}
+.gr-day-block.collapsed .gr-day-chev{transform:rotate(-90deg)}
 .splash{position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.5s ease}
 .splash.hidden{opacity:0;pointer-events:none}
 .splash img{width:60%;max-width:260px;object-fit:contain}
@@ -316,12 +344,7 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
   </div>
   <div id="gr-content" class="gr-content">
   <div class="scroll-area" id="gr-view-plan"><div class="content">
-    <div class="month-nav">
-      <div class="nav-btn" onclick="grPrevWeek()"><svg viewBox="0 0 12 12"><polyline points="8,2 4,6 8,10" fill="none" stroke="#888" stroke-width="2"/></svg></div>
-      <span class="month-lbl" id="gr-week-lbl">THIS WEEK</span>
-      <div class="nav-btn" onclick="grNextWeek()"><svg viewBox="0 0 12 12"><polyline points="4,2 8,6 4,10" fill="none" stroke="#888" stroke-width="2"/></svg></div>
-    </div>
-    <div id="gr-week-grid"></div>
+    <div id="gr-plan-sections"></div>
   </div></div>
   <div class="scroll-area" id="gr-view-history" style="display:none"><div class="content">
     <div class="month-nav">
@@ -560,7 +583,7 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 var GAS_TASKS   = 'https://script.google.com/macros/s/AKfycbyG5nZqmwr9Rd5oN2wMX2_ZCOCGa6VSwId92LjuJMYPXii61UgAM-TGFk2tfSJL8iSR/exec';
 var GAS_FINANCE = 'https://script.google.com/macros/s/AKfycbxVXCs7ehKbwE-M62AlHiLc222Sd4Ms9bRIuVPhaaiYNeDUOzcV8FYromVAFSw_NhCp/exec';
 var GAS_HABITS  = 'https://script.google.com/macros/s/AKfycbyMcx_UAJrf2Cv0KGehO5spLEpUndaxG2L9NV5sgWHhvbtHtTJGNqVxX85YfPl1QqZr/exec';
-var GAS_GROCERY = 'https://script.google.com/macros/s/AKfycbyV-mKa_9Ni7Phw8t-h_XO7IchhzJvcLzVP48JffsGlJ-OKaARKeAlcMtT6XUdyttVSHw/exec';
+var GAS_GROCERY = 'https://script.google.com/macros/s/AKfycbxmWmmDqhLjQXwwBNNCZZo9sPFoAs1wu2-GnqftiH58B8TnawbCZ6vEPZdll5qnNbCA2Q/exec';
 
 /* ── PDF TEXT EXTRACTION ── */
 if (typeof pdfjsLib !== 'undefined') {
@@ -666,6 +689,8 @@ function navigate(newIndex) {
   var newTab = tabOrder[newIndex];
   currentTab = newTab;
   document.getElementById('topbar-title').textContent = tabTitles[newTab];
+  var pbn=document.getElementById('btn-plus');
+  if(pbn&&newTab!=='grocery') pbn.classList.remove('active');
   if (newTab === 'chat') openGeneralChat();
   if (newTab === 'grocery') loadGrocery();
   var io = document.getElementById('inbox-overlay');
@@ -720,6 +745,7 @@ function selectCat(el,cat){
 function handlePlus(){
   if(currentTab==='tasks'){openNewProject();return;}
   if(currentTab==='habits'){openNewHabit();return;}
+  if(currentTab==='grocery'&&grSubTab==='plan'){toggleGrPlanEdit();return;}
 }
 function openNewProject(){
   var sel=document.getElementById('np-cat');
@@ -1576,6 +1602,10 @@ var grWeekCache        = {};
 var grPushSetupDone = false;
 var grLogCtx        = null;
 var grMealDetailCtx = null;
+var grMealLists     = {plan:[],reserve:[]};
+var grPlanEditMode  = false;
+var grPlanSecState  = {plan_Main:'open',plan_Lucas:'open',reserve_Main:'closed',reserve_Lucas:'closed'};
+var grHistDayState  = {}; /* key = ws+'|'+day -> 'open'|'closed' */
 
 function grWeekStart(d){
   var dt=new Date(d.getTime()); var dow=dt.getDay();
@@ -1606,6 +1636,7 @@ function loadGrocery(){
     groceryWeekData=grWeekCache[ws];
     if(Array.isArray(groceryWeekData.meals)){grMealsData=groceryWeekData.meals;grMealsLoaded=true;}
     if(Array.isArray(groceryWeekData.meal_history)&&groceryWeekData.meal_history.length) grHistoryData=groceryWeekData.meal_history;
+    if(groceryWeekData.meal_lists) grMealLists=groceryWeekData.meal_lists;
     renderGrCurrentTab();
     checkUnknownMeals();
     if(!grPushSetupDone){grPushSetupDone=true;setupPushNotifications();}
@@ -1626,6 +1657,7 @@ function loadGrocery(){
         groceryWeekData=data;
         if(Array.isArray(data.meals)){grMealsData=data.meals;grMealsLoaded=true;}
         if(Array.isArray(data.meal_history)&&data.meal_history.length) grHistoryData=data.meal_history;
+        if(data.meal_lists) grMealLists=data.meal_lists;
       }
       renderGrCurrentTab();
       checkUnknownMeals();
@@ -1658,6 +1690,8 @@ function switchGrTab(tab){
     document.getElementById('gr-view-shopping').style.display = tab==='shopping' ? '' : 'none';
     document.getElementById('gr-view-meals').style.display    = tab==='meals'    ? '' : 'none';
     grSubTab=tab;
+    var pb=document.getElementById('btn-plus');
+    if(pb&&tab!=='plan') pb.classList.remove('active');
     renderGrCurrentTab();
     setTimeout(function(){grTabAnimating=false;},360);
   });
@@ -1699,59 +1733,128 @@ function grNextWeek(){
   });
 }
 
-/* ── WEEK sub-tab ── */
+/* ── PLAN sub-tab (date-free Plan + Reserve sections) ── */
+function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;');}
+
 function renderGrWeek(){
-  var lbl=document.getElementById('gr-week-lbl');
-  if(lbl) lbl.textContent=grWeekLabel(grCurrentWeekStart);
-  var el=document.getElementById('gr-week-grid'); if(!el) return;
-  var menu=groceryWeekData&&groceryWeekData.meal_plan?groceryWeekData.meal_plan:[];
-  var SLOTS=[{audience:'Main',meal_type:'Dinner'},{audience:'Lucas',meal_type:'Lunch'},{audience:'Lucas',meal_type:'Dinner'}];
-  var html='';
-  GR_DAY_ORDER.forEach(function(day){
-    var p=grCurrentWeekStart.split('-');
-    var base=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
-    base.setDate(base.getDate()+GR_DAY_OFFSET[day]);
-    var today=new Date(); today.setHours(0,0,0,0);
-    var isToday=base.getTime()===today.getTime();
-    var dayMenu=menu.filter(function(r){return r['Day']===day;});
-    html+='<div class="gr-day-block'+(isToday?' gr-day-today':'')+'">'+
-      '<div class="gr-day-hdr">'+
-        '<span class="gr-day-name">'+(isToday?'TODAY — ':'')+day.slice(0,3).toUpperCase()+'</span>'+
-        '<span class="gr-day-date">'+GR_MON_SHORT[base.getMonth()]+' '+base.getDate()+'</span>'+
+  var el=document.getElementById('gr-plan-sections'); if(!el) return;
+  var plusBtn=document.getElementById('btn-plus');
+  if(plusBtn&&currentTab==='grocery'&&grSubTab==='plan') plusBtn.classList.toggle('active',grPlanEditMode);
+  var secs=[
+    {key:'plan_Main',    list:'plan',    audience:'Main',  title:'PLAN — MAIN DINNER'},
+    {key:'plan_Lucas',   list:'plan',    audience:'Lucas', title:'PLAN — LUCAS MEALS'},
+    {key:'reserve_Main', list:'reserve', audience:'Main',  title:'RESERVE — MAIN DINNER'},
+    {key:'reserve_Lucas',list:'reserve', audience:'Lucas', title:'RESERVE — LUCAS MEALS'}
+  ];
+  el.innerHTML=secs.map(renderGrListSection).join('');
+}
+
+function renderGrListSection(sec){
+  var rows=(grMealLists[sec.list]||[]).filter(function(r){return r['Audience']===sec.audience;});
+  var collapsed=grPlanSecState[sec.key]==='closed';
+  var totalCount=rows.reduce(function(a,r){return a+(parseInt(r['Count']||'0',10)||0);},0);
+  var body='';
+  if(!rows.length){
+    body='<div class="gr-list-empty">Empty.</div>';
+  } else {
+    body=rows.map(function(r){
+      var id=escAttr(r['ID']);
+      var name=escAttr(r['Meal_Name']);
+      var cnt=parseInt(r['Count']||'0',10)||0;
+      var ctrls=grPlanEditMode
+        ? '<div class="gr-list-ctrls">'+
+            '<button class="gr-list-ctrl" onclick="grListDec(\''+id+'\')">−</button>'+
+            '<span class="gr-list-badge">×'+cnt+'</span>'+
+            '<button class="gr-list-ctrl" onclick="grListInc(\''+id+'\')">+</button>'+
+            '<button class="gr-list-ctrl del" onclick="grListDel(\''+id+'\')">×</button>'+
+          '</div>'
+        : '<span class="gr-list-badge">×'+cnt+'</span>';
+      return '<div class="gr-list-row" data-id="'+id+'">'+
+        '<span class="gr-list-name">'+name+'</span>'+
+        ctrls+
       '</div>';
-    SLOTS.forEach(function(slot){
-      var entry=null;
-      for(var i=0;i<dayMenu.length;i++){if(dayMenu[i]['Audience']===slot.audience&&dayMenu[i]['Meal_Type']===slot.meal_type){entry=dayMenu[i];break;}}
-      var who=slot.audience==='Main'?'US':slot.audience.toUpperCase();
-      if(entry&&entry['Meal_Name']){
-        var st=entry['Status']||'planned';
-        html+='<div class="gr-slot">'+
-          '<span class="gr-slot-who">'+who+' · '+slot.meal_type.toUpperCase()+'</span>'+
-          '<span class="gr-slot-name">'+entry['Meal_Name']+'</span>'+
-          '<span class="gr-slot-status gr-status-'+st+'">'+st+'</span>'+
-          (st==='planned'||st==='unknown'?'<button class="gr-slot-confirm" data-id="'+entry['ID']+'" data-plan-id="'+entry['ID']+'">confirm</button>':'')+''+
-        '</div>';
-      } else {
-        html+='<div class="gr-slot">'+
-          '<span class="gr-slot-who">'+who+' · '+slot.meal_type.toUpperCase()+'</span>'+
-          '<button class="gr-slot-add" data-audience="'+slot.audience+'" data-meal-type="'+slot.meal_type+'" data-day="'+day+'">+ add</button>'+
-        '</div>';
-      }
-    });
-    html+='</div>';
-  });
-  el.innerHTML=html||'<div class="gr-empty">No meals planned yet.</div>';
-  el.querySelectorAll('.gr-slot-add').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      openLogMeal(this.dataset.audience,this.dataset.mealType,this.dataset.day);
-    }.bind(btn));
-  });
-  el.querySelectorAll('.gr-slot-confirm').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      var planId=this.dataset.planId;
-      moveMealToHistoryLocal(planId);
-    }.bind(btn));
-  });
+    }).join('');
+  }
+  if(grPlanEditMode){
+    body+='<button class="gr-list-add" onclick="grListAdd(\''+sec.list+'\',\''+sec.audience+'\')">+ add meal</button>';
+  }
+  return '<div class="gr-list-sec'+(collapsed?' collapsed':'')+'" data-key="'+sec.key+'">'+
+    '<div class="gr-list-hdr" onclick="toggleGrPlanSection(\''+sec.key+'\')">'+
+      '<span class="gr-list-hdr-l">'+
+        '<svg class="gr-list-chev" viewBox="0 0 10 10"><polyline points="2,3 5,7 8,3" fill="none" stroke="#aaa" stroke-width="1.5"/></svg>'+
+        '<span class="gr-list-title">'+sec.title+'</span>'+
+      '</span>'+
+      '<span class="gr-list-count">'+rows.length+' meals · '+totalCount+' portions</span>'+
+    '</div>'+
+    '<div class="gr-list-body">'+body+'</div>'+
+  '</div>';
+}
+
+function toggleGrPlanSection(key){
+  grPlanSecState[key]=grPlanSecState[key]==='closed'?'open':'closed';
+  renderGrWeek();
+}
+
+function toggleGrPlanEdit(){
+  grPlanEditMode=!grPlanEditMode;
+  renderGrWeek();
+}
+
+function grListAdd(listType,audience){
+  grLogCtx={mode:'list',list_type:listType,audience:audience};
+  var who=audience==='Main'?'US':audience.toUpperCase();
+  document.getElementById('gr-log-title').textContent=listType.toUpperCase()+' — '+who;
+  document.getElementById('gr-log-input').value='';
+  renderGrSuggestions(grSortedMeals());
+  document.getElementById('gr-log-overlay').classList.add('open');
+  setTimeout(function(){document.getElementById('gr-log-input').focus();},80);
+}
+
+function grListFindRow(id){
+  var lists=['plan','reserve'];
+  for(var i=0;i<lists.length;i++){
+    var arr=grMealLists[lists[i]]||[];
+    for(var j=0;j<arr.length;j++){if(String(arr[j]['ID'])===String(id)) return {list:lists[i],row:arr[j],idx:j};}
+  }
+  return null;
+}
+
+function grListInc(id){
+  var hit=grListFindRow(id); if(!hit) return;
+  var prev=parseInt(hit.row['Count']||'0',10)||0;
+  hit.row['Count']=prev+1;
+  renderGrWeek();
+  fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'updateMealListCount',id:id,count:prev+1})})
+    .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+    .then(function(res){if(res.error){hit.row['Count']=prev;renderGrWeek();showToast('Update failed');}});
+}
+
+function grListDec(id){
+  var hit=grListFindRow(id); if(!hit) return;
+  var prev=parseInt(hit.row['Count']||'0',10)||0;
+  var next=prev-1;
+  if(next<=0){
+    grMealLists[hit.list].splice(hit.idx,1);
+  } else {
+    hit.row['Count']=next;
+  }
+  renderGrWeek();
+  fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'updateMealListCount',id:id,count:next})})
+    .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+    .then(function(res){if(res.error){
+      if(next<=0) grMealLists[hit.list].splice(hit.idx,0,hit.row);
+      hit.row['Count']=prev; renderGrWeek(); showToast('Update failed');
+    }});
+}
+
+function grListDel(id){
+  var hit=grListFindRow(id); if(!hit) return;
+  var snapshot=hit.row;
+  grMealLists[hit.list].splice(hit.idx,1);
+  renderGrWeek();
+  fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'removeMealListItem',id:id})})
+    .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+    .then(function(res){if(res.error){grMealLists[hit.list].splice(hit.idx,0,snapshot);renderGrWeek();showToast('Delete failed');}});
 }
 
 /* ── HISTORY sub-tab ── */
@@ -1767,12 +1870,19 @@ function renderGrHistory(){
     base.setDate(base.getDate()+GR_DAY_OFFSET[day]);
     var today=new Date(); today.setHours(0,0,0,0);
     var isToday=base.getTime()===today.getTime();
+    var key=grCurrentWeekStart+'|'+day;
+    var override=grHistDayState[key];
+    var collapsed = override ? (override==='closed') : !isToday;
     var dayHist=grHistoryData.filter(function(r){return r['Day']===day;});
-    html+='<div class="gr-day-block'+(isToday?' gr-day-today':'')+'">'+
-      '<div class="gr-day-hdr">'+
+    html+='<div class="gr-day-block'+(isToday?' gr-day-today':'')+(collapsed?' collapsed':'')+'" data-day-key="'+key+'">'+
+      '<div class="gr-day-hdr" onclick="toggleGrHistDay(\''+key+'\')">'+
         '<span class="gr-day-name">'+(isToday?'TODAY — ':'')+day.slice(0,3).toUpperCase()+'</span>'+
-        '<span class="gr-day-date">'+GR_MON_SHORT[base.getMonth()]+' '+base.getDate()+'</span>'+
-      '</div>';
+        '<span style="display:flex;align-items:center">'+
+          '<span class="gr-day-date">'+GR_MON_SHORT[base.getMonth()]+' '+base.getDate()+'</span>'+
+          '<svg class="gr-day-chev" viewBox="0 0 10 10"><polyline points="2,3 5,7 8,3" fill="none" stroke="#aaa" stroke-width="1.5"/></svg>'+
+        '</span>'+
+      '</div>'+
+      '<div class="gr-day-body">';
     SLOTS.forEach(function(slot){
       var entry=null;
       for(var i=0;i<dayHist.length;i++){if(dayHist[i]['Audience']===slot.audience&&dayHist[i]['Meal_Type']===slot.meal_type){entry=dayHist[i];break;}}
@@ -1789,14 +1899,28 @@ function renderGrHistory(){
         '</div>';
       }
     });
-    html+='</div>';
+    html+='</div></div>';
   });
   el.innerHTML=html||'<div class="gr-empty">No history yet.</div>';
   el.querySelectorAll('.gr-slot-add').forEach(function(btn){
-    btn.addEventListener('click',function(){
+    btn.addEventListener('click',function(ev){
+      ev.stopPropagation();
       openLogActual(this.dataset.audience,this.dataset.mealType,this.dataset.day);
     }.bind(btn));
   });
+}
+
+function toggleGrHistDay(key){
+  var parts=key.split('|'); var day=parts[1];
+  var p=grCurrentWeekStart.split('-');
+  var base=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+  base.setDate(base.getDate()+GR_DAY_OFFSET[day]);
+  var today=new Date(); today.setHours(0,0,0,0);
+  var isToday=base.getTime()===today.getTime();
+  var override=grHistDayState[key];
+  var currentlyCollapsed = override ? (override==='closed') : !isToday;
+  grHistDayState[key] = currentlyCollapsed ? 'open' : 'closed';
+  renderGrHistory();
 }
 
 /* ── SHOPPING sub-tab ── */
@@ -1903,6 +2027,7 @@ function moveMealToHistoryLocal(planId) {
   if(!row) return;
   var prev=row['Status'];
   row['Status']='confirmed';
+  applyConfirmationLocal(row['Audience'],row['Meal_Name']);
   renderGrWeek();
   fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'moveMealToHistory',meal_plan_id:planId})})
     .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
@@ -1910,6 +2035,26 @@ function moveMealToHistoryLocal(planId) {
 }
 
 /* ── MEALS sub-tab ── */
+function applyConfirmationLocal(audience, mealName){
+  if(!audience||!mealName||!grMealLists) return;
+  var nameLc=String(mealName).toLowerCase();
+  var reserve=grMealLists.reserve||[];
+  for(var i=0;i<reserve.length;i++){
+    if(reserve[i]['Audience']===audience && String(reserve[i]['Meal_Name']).toLowerCase()===nameLc){
+      var cur=(parseInt(reserve[i]['Count']||'0',10)||0)-1;
+      if(cur<=0) reserve.splice(i,1);
+      else reserve[i]['Count']=cur;
+      break;
+    }
+  }
+  var plan=grMealLists.plan||[];
+  for(var j=0;j<plan.length;j++){
+    if(plan[j]['Audience']===audience && String(plan[j]['Meal_Name']).toLowerCase()===nameLc){
+      plan.splice(j,1); break;
+    }
+  }
+}
+
 function renderGrMealsTab(){
   if(!grMealsLoaded){loadGrMeals();return;}
   renderGrMeals();
@@ -2017,12 +2162,40 @@ function openLogActual(audience,meal_type,day){
 function saveLogMeal(){
   if(!grLogCtx) return;
   var name=document.getElementById('gr-log-input').value.trim(); if(!name) return;
-  var day=grLogCtx.day, audience=grLogCtx.audience, meal_type=grLogCtx.meal_type, mode=grLogCtx.mode||'plan';
+  var mode=grLogCtx.mode||'plan';
+  if(mode==='list'){
+    var listType=grLogCtx.list_type, lAud=grLogCtx.audience;
+    var arr=grMealLists[listType]||(grMealLists[listType]=[]);
+    var existing=null;
+    for(var i=0;i<arr.length;i++){if(arr[i]['Audience']===lAud&&String(arr[i]['Meal_Name']).toLowerCase()===name.toLowerCase()){existing=arr[i];break;}}
+    var snapshotCount=existing?(parseInt(existing['Count']||'0',10)||0):0;
+    var tempId='__l'+Date.now();
+    if(existing){existing['Count']=snapshotCount+1;}
+    else{arr.push({ID:tempId,List_Type:listType,Audience:lAud,Meal_ID:'',Meal_Name:name,Count:1,Created_At:''});}
+    closeLogMeal();
+    renderGrWeek();
+    fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'addMealListItem',list_type:listType,audience:lAud,meal_name:name,count:1})})
+      .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+      .then(function(res){
+        if(res.error){
+          if(existing){existing['Count']=snapshotCount;}
+          else{for(var j=arr.length-1;j>=0;j--){if(arr[j]['ID']===tempId){arr.splice(j,1);break;}}}
+          renderGrWeek(); showToast('Add failed');
+          return;
+        }
+        if(!existing){
+          for(var k=0;k<arr.length;k++){if(arr[k]['ID']===tempId){arr[k]['ID']=String(res.id);break;}}
+        }
+      });
+    return;
+  }
+  var day=grLogCtx.day, audience=grLogCtx.audience, meal_type=grLogCtx.meal_type;
   if(mode==='history'){
     var tempEntry={ID:'__h'+Date.now(),Week_Start:grCurrentWeekStart,Day:day,Audience:audience,Meal_Type:meal_type,Meal_Name:name,Meal_ID:''};
     grHistoryData.push(tempEntry);
     closeLogMeal();
     renderGrHistory();
+    applyConfirmationLocal(audience,name);
     fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'addMealHistory',week_start:grCurrentWeekStart,day:day,audience:audience,meal_type:meal_type,meal_name:name})})
       .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
       .then(function(res){

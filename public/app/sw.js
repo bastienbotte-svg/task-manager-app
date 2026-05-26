@@ -36,7 +36,7 @@ self.addEventListener('notificationclick', function(e) {
   );
 });
 
-const CACHE_NAME = 'tm-shell-v36';
+const CACHE_NAME = 'tm-shell-v37';
 const SHELL = ['/task-manager-app/', '/task-manager-app/style.css', '/task-manager-app/manifest.json'];
 
 self.addEventListener('install', (e) => {
