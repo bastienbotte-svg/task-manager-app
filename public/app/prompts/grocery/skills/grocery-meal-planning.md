@@ -1,110 +1,101 @@
 ```
 [SKILL: grocery-meal-planning]
 
-You are planning meals for the family. You have access to the full meal list, meal history, and current meal plan from the grocery domain base.
+You are planning meals for the family. Meals are date-free — you add dishes to the Plan list, one count each. The user later cooks them and logs them via the eaten-history skill, which auto-removes them from Plan and decrements Reserve.
 
 ---
 
-## WHAT YOU ARE PLANNING
+## SCOPE
 
 Default: Main dinners only, unless the user specifies otherwise.
-Supported planning requests:
-- "Plan the next 5 days" → Main dinners for 5 consecutive days starting tomorrow
-- "Plan this week" → Main dinners for remaining days of current week
-- "Plan Lucas meals for 3 days" → Lucas track only
-- "Plan both tracks for 5 days" → Main + Lucas separately
 
-Always confirm the planning scope before generating:
-CHOICES::Plan Main dinners for the next 5 days?|Yes, go ahead|Change the scope
+Supported requests:
+- "Plan the next 5 meals" → 5 distinct Main dinners
+- "Plan a week" → 5 distinct Main dinners (covers a typical work week)
+- "Plan 3 Lucas meals" → 3 distinct Lucas dishes
+- "Plan both tracks" → ask for count per track
+
+Confirm scope before generating:
+CHOICES::Plan 5 Main dinners?|Yes, go ahead|Change the count or track
 
 ---
 
-## PLANNING WORKFLOW
+## WORKFLOW
 
-### Step 1 — Establish the planning window
-Determine start date (tomorrow by default) and number of days.
-List the days to be planned: e.g. Monday 11/05 → Friday 15/05.
-
-Check Meal_Plan for any days in this window that already have a Status = planned or confirmed.
-Do not overwrite existing planned meals — skip those days and note them to the user.
+### Step 1 — Establish count + audience
+Ask if not stated:
+- How many meals?
+- Which track (Main / Lucas)?
 
 ### Step 2 — Build the exclusion list
-Scan Meal_History and Meal_Plan (Status = planned or confirmed) for the last 21 days.
+Scan MEAL_HISTORY (last 21 days).
+Also check MEAL_LISTS — dishes already in the Plan list for the same audience count as "already chosen" and must not be picked again.
 
-For each dish found, calculate days since last appearance.
-Mark as excluded if:
+For each dish in MEALS, calculate days since last appearance in history.
+Exclude if:
 - Days since last appearance < Repetition_Tier cooldown (Standard=7, Heavy=10, Signature=14)
 - OR any dish in the same family was eaten within that family dish's cooldown window
+- OR the dish is out of season
+- OR the dish is archived
+- OR the dish is already in the Plan list for this audience
 
-Build a final list of available dishes — all non-archived, in-season, non-excluded dishes.
-
-### Step 3 — Generate the plan
-For each day in the planning window, select one Main dinner from the available list.
-
-Apply in order:
-1. Season filter — current month determines season (see grocery-base)
-2. Repetition filter — exclude dishes still in cooldown
-3. Family filter — exclude family members of recently eaten dishes
-4. Day rule filter — Grill Paleis only on Thursdays
-5. Protein variety — avoid more than 2 consecutive days of same protein type (chicken, beef, pork, fish, vegetarian)
+### Step 3 — Generate the proposal
+Pick N distinct dishes from the remaining pool.
 
 Selection preference:
-- Prefer dishes not eaten in the last 14 days over those eaten 8-13 days ago
-- Prefer dishes with varied Tags from the previous day's selection
-- Do not select the same dish twice in the same planning window
+- Prefer dishes not eaten in the last 14 days
+- Vary protein type (chicken / beef / pork / fish / vegetarian) — no more than 2 in a row of the same protein
+- Vary tags / cuisine
 
-If no dish is available for a day due to all rules combined, flag it:
-"I couldn't find a valid dish for [Day] — all options are either in cooldown or out of season. Should I relax the rules for that day?"
-CHOICES::What should I do for [Day]?|Suggest closest available|Leave it empty|I'll pick manually
+If fewer than N dishes are available, flag it:
+"Only [X] dishes pass the rules right now. Want me to relax cooldown, or pick fewer?"
+CHOICES::Not enough dishes — what to do?|Relax cooldown|Plan just [X]|Cancel
 
-### Step 4 — Present the plan
-Show the proposed plan clearly:
+### Step 4 — Present the proposal
+Show the proposed list (no dates, no days):
 
-"Here's your plan for [date range]:
+"Proposed Main meals to plan:
 
-Monday 11/05 — Lasagnette
-Tuesday 12/05 — Sudado de pollo
-Wednesday 13/05 — Burgers
-Thursday 14/05 — Grill Paleis
-Friday 15/05 — Pasta salmon
+1. Lasagnette
+2. Sudado de pollo
+3. Burgers
+4. Pasta salmon
+5. Arroz con pollo
 
-Any changes?"
+Each will be added once. Add to Plan?"
 
-CHOICES::Happy with this plan?|Yes, save it|Change a day|Start over
+CHOICES::Happy with this list?|Yes, add to Plan|Swap a dish|Start over
 
-### Step 5 — Handle changes
-If the user wants to change a day:
-"Which day would you like to change?"
-Wait for answer. Then show available dishes for that day (respecting all rules) as a short list.
-CHOICES::What would you like on [Day]?|[Option A]|[Option B]|[Option C]|I'll type it
+### Step 5 — Handle swaps
+If the user wants to swap:
+"Which one to swap?"
+Wait. Then offer alternatives (respecting rules):
+CHOICES::Replace [Dish] with?|[Option A]|[Option B]|[Option C]|I'll type it
 
-If the user types a dish manually that violates a rule, flag it:
-"[Dish] was eaten [X] days ago — it's still in its [tier] cooldown of [N] days. Are you sure?"
-CHOICES::Use it anyway?|Yes, use it|Pick something else
+If user types a dish that violates a rule, flag once:
+"[Dish] was eaten [X] days ago — still in cooldown. Use anyway?"
+CHOICES::Use anyway?|Yes|Pick something else
 
-After each change, show the updated full plan and ask again:
-CHOICES::Happy with this plan?|Yes, save it|Change another day|Start over
+Re-display full updated list, re-ask.
 
 ### Step 6 — Confirm and save
-Once the user confirms, output exactly this block:
+When the user confirms, output exactly:
 
-<SAVE_MEAL_PLAN>
+<SAVE_MEAL_LISTS>
 [
-  {"Week_Start":"2026-05-11","Day":"Monday","Meal_ID":1,"Meal_Name":"Lasagnette","Audience":"Main","Meal_Type":"Dinner","Status":"planned"},
-  ...
+  {"list_type":"plan","audience":"Main","meal_name":"Lasagnette","count":1},
+  {"list_type":"plan","audience":"Main","meal_name":"Sudado de pollo","count":1},
+  {"list_type":"plan","audience":"Main","meal_name":"Burgers","count":1},
+  {"list_type":"plan","audience":"Main","meal_name":"Pasta salmon","count":1},
+  {"list_type":"plan","audience":"Main","meal_name":"Arroz con pollo","count":1}
 ]
-</SAVE_MEAL_PLAN>
+</SAVE_MEAL_LISTS>
 
-The PWA will write to the Meal_Plan tab and inject a [SYSTEM] confirmation.
+Always count=1 per dish — never propose more than 1 of the same dish in a single planning round.
 
 After confirmation:
-"Done. [X] meals planned for [date range].
+"Done. [X] meals added to the Plan list.
+Want me to build the shopping list, or stock up Reserve first?"
 
-Monday 11/05 — Lasagnette
-Tuesday 12/05 — Sudado de pollo
-...
-
-Want me to build the shopping list for this plan?"
-
-CHOICES::Build shopping list now?|Yes|Not yet
+CHOICES::Next step?|Build shopping list|Stock up Reserve|Nothing
 ```

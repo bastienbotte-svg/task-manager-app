@@ -172,6 +172,7 @@ function doPost(e) {
       case 'addInbox':              result = addInbox(body);              break;
       case 'chat':                  result = handleChat(body);            break;
       case 'addMealListItem':       result = addMealListItem(body);       break;
+      case 'addMealListItems':      result = addMealListItems(body);      break;
       case 'updateMealListCount':   result = updateMealListCount(body);   break;
       case 'removeMealListItem':    result = removeMealListItem(body);    break;
       default:                      result = { error: 'Unknown action: ' + action };
@@ -673,45 +674,30 @@ function addShoppingItem(body) {
   return { success: true, id: newId };
 }
 
+// generateShoppingList — sources ingredients from the date-free Plan list (× Count).
+// body.audience optional ('Main' | 'Lucas' | undefined = both).
+// body.week_start optional — used only as a tag on the Grocery_List rows.
 function generateShoppingList(body) {
   var ss        = getSpreadsheet();
-  var planSheet = ss.getSheetByName('Meal_Plan');
   var listSheet = ss.getSheetByName('Grocery_List');
   var ingSheet  = ss.getSheetByName('Meal_Ingredients');
-
-  if (!planSheet) return { error: 'Meal_Plan tab not found' };
   if (!listSheet) return { error: 'Grocery_List tab not found' };
 
-  var weekStart = String(body.week_start || currentWeekStart()).trim();
-  var days      = parseInt(body.days || '7', 10);
-  if (isNaN(days) || days < 1) days = 7;
+  var weekStart    = String(body.week_start || currentWeekStart()).trim();
+  var audienceFilt = String(body.audience || '').trim();
 
-  var DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-  var wsParts   = weekStart.split('-');
-  var wsDate    = new Date(parseInt(wsParts[0],10), parseInt(wsParts[1],10)-1, parseInt(wsParts[2],10));
-  wsDate.setHours(0,0,0,0);
-
-  var today = new Date();
-  today.setHours(0,0,0,0);
-  var cutoff = new Date(today.getTime() + days * 86400000);
-
-  var includedDays = {};
-  DAY_NAMES.forEach(function(name, offset) {
-    var d = new Date(wsDate);
-    d.setDate(wsDate.getDate() + offset);
-    if (d >= today && d < cutoff) includedDays[name] = true;
-  });
-
-  var allPlan  = sheetToObjects(planSheet);
-  var weekPlan = allPlan.filter(function(r) {
-    return r['Week_Start'] === weekStart && includedDays[r['Day']];
+  var lists      = getMealLists();
+  var planItems  = (lists.plan || []).filter(function(r) {
+    if (!audienceFilt) return true;
+    return r['Audience'] === audienceFilt;
   });
 
   var allIng = ingSheet ? sheetToObjects(ingSheet) : [];
 
   var merged = {};
-  weekPlan.forEach(function(planRow) {
+  planItems.forEach(function(planRow) {
     var mealId = planRow['Meal_ID'];
+    var count  = parseInt(planRow['Count'] || '1', 10) || 1;
     if (!mealId) return;
     var ings = allIng.filter(function(r) { return r['Meal_ID'] === mealId; });
     ings.forEach(function(ing) {
@@ -719,7 +705,7 @@ function generateShoppingList(body) {
       if (!merged[key]) {
         merged[key] = { Item: ing['Item'], quantity: 0, Unit: ing['Unit'], Category: ing['Category'], sources: [] };
       }
-      merged[key].quantity += parseFloat(ing['Quantity']) || 0;
+      merged[key].quantity += (parseFloat(ing['Quantity']) || 0) * count;
       if (merged[key].sources.indexOf(planRow['ID']) === -1) {
         merged[key].sources.push(planRow['ID']);
       }
@@ -747,7 +733,7 @@ function generateShoppingList(body) {
         case 'Quantity':   return item.quantity > 0 ? String(item.quantity) : '';
         case 'Unit':       return item.Unit;
         case 'Category':   return item.Category;
-        case 'Source':     return item.sources.join(',');
+        case 'Source':     return 'plan:' + item.sources.join(',');
         case 'Checked':    return 'FALSE';
         default:           return '';
       }
@@ -755,7 +741,7 @@ function generateShoppingList(body) {
     listSheet.appendRow(row);
   });
 
-  return { success: true, week_start: weekStart, days: days, items_count: keys.length };
+  return { success: true, week_start: weekStart, items_count: keys.length, plan_items: planItems.length };
 }
 
 function addShoppingItems(body) {
@@ -952,6 +938,16 @@ function addMealListItem(body) {
   });
   sheet.appendRow(row);
   return { success: true, id: newId, count: addCount, created: true };
+}
+
+// addMealListItems — batch wrapper. body.items: [{list_type, audience, meal_name, count?}]
+function addMealListItems(body) {
+  var items = body.items || [];
+  if (!items.length) return { error: 'No items provided' };
+  var results = items.map(function(it) { return addMealListItem(it); });
+  var ok      = results.filter(function(r) { return !r.error; }).length;
+  var errors  = results.filter(function(r) { return r.error; });
+  return { success: true, count: ok, errors: errors };
 }
 
 // updateMealListCount — body: {id, count}. Count <= 0 deletes the row.

@@ -583,7 +583,7 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 var GAS_TASKS   = 'https://script.google.com/macros/s/AKfycbyG5nZqmwr9Rd5oN2wMX2_ZCOCGa6VSwId92LjuJMYPXii61UgAM-TGFk2tfSJL8iSR/exec';
 var GAS_FINANCE = 'https://script.google.com/macros/s/AKfycbxVXCs7ehKbwE-M62AlHiLc222Sd4Ms9bRIuVPhaaiYNeDUOzcV8FYromVAFSw_NhCp/exec';
 var GAS_HABITS  = 'https://script.google.com/macros/s/AKfycbyMcx_UAJrf2Cv0KGehO5spLEpUndaxG2L9NV5sgWHhvbtHtTJGNqVxX85YfPl1QqZr/exec';
-var GAS_GROCERY = 'https://script.google.com/macros/s/AKfycbxmWmmDqhLjQXwwBNNCZZo9sPFoAs1wu2-GnqftiH58B8TnawbCZ6vEPZdll5qnNbCA2Q/exec';
+var GAS_GROCERY = 'https://script.google.com/macros/s/AKfycbyNxOyAN4ii9SZGf9KHkx78XSU1JxnRFdRLiRupQOZHrlMwmEbwbV1NYfRl1RGDwHEa9g/exec';
 
 /* ── PDF TEXT EXTRACTION ── */
 if (typeof pdfjsLib !== 'undefined') {
@@ -2438,8 +2438,8 @@ function openGroceryChat(){
         }).catch(function(){chatContextReady=true;});
     } else {
       chatContextReady=true;
-      var opener='[SYSTEM: Briefly greet, show a 1-line summary of what is planned this week (or say nothing is planned), then ask: how many days are they shopping for, and is there anything they already have at home or want to skip. Be concise. No emojis.]';
-      fireOpener(system,opener,'Ready to help with groceries. How many days are you shopping for, and anything you already have at home?');
+      var opener='[SYSTEM: Briefly greet. One line summary of the current Plan + Reserve totals (count per audience), or say "Plan empty" if nothing in Plan. Then ask what they want: plan meals, stock up Reserve, log eaten meals, or build the shopping list. Be concise. No emojis.]';
+      fireOpener(system,opener,'Ready. Plan meals, stock Reserve, log eaten, or build shopping list?');
     }
   }).catch(function(){chatContextReady=true;});
 }
@@ -2458,9 +2458,23 @@ function buildGrocerySystemPrompt(ws,weekData,recentData,base,prevWeekData){
       return l;
     }).join('\n');
   }
-  function fmtPlan(plan){
-    if(!plan||!plan.length) return '(none planned yet)';
-    return plan.map(function(r){return r['Day']+' | '+r['Audience']+' | '+r['Meal_Type']+': '+r['Meal_Name']+' ['+(r['Status']||'planned')+']';}).join('\n');
+  function fmtLists(lists){
+    if(!lists) return 'Plan: (empty)\nReserve: (empty)';
+    function fmtSec(arr,label){
+      if(!arr||!arr.length) return label+': (empty)';
+      var byAud={Main:[],Lucas:[]};
+      arr.forEach(function(r){var a=r['Audience']||'Main';(byAud[a]||(byAud[a]=[])).push(r);});
+      var parts=[];
+      Object.keys(byAud).forEach(function(a){
+        if(!byAud[a].length) return;
+        parts.push('  '+a+':');
+        byAud[a].forEach(function(r){
+          parts.push('    - '+r['Meal_Name']+' x'+(r['Count']||1)+(r['ID']?' [id:'+r['ID']+']':''));
+        });
+      });
+      return label+':\n'+parts.join('\n');
+    }
+    return fmtSec(lists.plan,'Plan')+'\n'+fmtSec(lists.reserve,'Reserve');
   }
   function fmtHistory(rows){
     if(!rows||!rows.length) return '(no history)';
@@ -2477,7 +2491,8 @@ function buildGrocerySystemPrompt(ws,weekData,recentData,base,prevWeekData){
   var prefix='Today: '+new Date().toISOString().slice(0,10)+'. Week: '+ws+'.';
   return prefix+'\n'+(base||'')
     .replace('{{MEALS}}',fmtMeals(weekData.meals||[]))
-    .replace('{{MEAL_PLAN}}',fmtPlan(weekData.meal_plan||[]))
+    .replace('{{MEAL_LISTS}}',fmtLists(weekData.meal_lists||{plan:[],reserve:[]}))
+    .replace('{{MEAL_PLAN}}',fmtLists(weekData.meal_lists||{plan:[],reserve:[]}))
     .replace('{{MEAL_HISTORY}}',fmtHistory((recentData.meals)||[]))
     .replace('{{SHOPPING_LIST}}',fmtList(combinedList));
 }
@@ -2928,6 +2943,22 @@ function handleChatReply(d) {
     catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
     return;
   }
+  var sml=extractBlock(reply,'SAVE_MEAL_LISTS');
+  if(sml){
+    chatMessages.push({role:'assistant',content:sml.rest||'Saving meal list items...'});
+    renderChat();
+    try{executeSaveMealLists(JSON.parse(sml.content));}
+    catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
+    return;
+  }
+  var lmh=extractBlock(reply,'LOG_MEAL_HISTORY');
+  if(lmh){
+    chatMessages.push({role:'assistant',content:lmh.rest||'Logging meal history...'});
+    renderChat();
+    try{executeLogMealHistory(JSON.parse(lmh.content));}
+    catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
+    return;
+  }
   var ssl=extractBlock(reply,'SAVE_SHOPPING_LIST');
   if(ssl){
     chatMessages.push({role:'assistant',content:ssl.rest||'Saving shopping list...'});
@@ -2989,6 +3020,51 @@ function executeSaveMealPlan(meals){
       if(!d.error) delete grWeekCache[grCurrentWeekStart];
       finishSend();
     });
+}
+
+function executeSaveMealLists(items){
+  chatMessages.push({role:'thinking'});
+  chatSending=true; document.getElementById('chat-send-btn').disabled=true; renderChat();
+  fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'addMealListItems',items:items})})
+    .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+    .then(function(d){
+      chatMessages.pop();
+      var msg;
+      if(d.error){msg='Save failed: '+d.error;}
+      else{
+        var n=d.count||items.length;
+        msg=n+' meal list item(s) written';
+        if(d.errors&&d.errors.length) msg+=' ('+d.errors.length+' failed)';
+      }
+      chatMessages.push({role:'system',content:msg});
+      if(!d.error){delete grWeekCache[grCurrentWeekStart];if(currentTab==='grocery') loadGrocery();}
+      finishSend();
+    });
+}
+
+function executeLogMealHistory(entries){
+  chatMessages.push({role:'thinking'});
+  chatSending=true; document.getElementById('chat-send-btn').disabled=true; renderChat();
+  var ws=grCurrentWeekStart;
+  var calls=entries.map(function(e){
+    return fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({
+      action:'addMealHistory',
+      week_start:ws,
+      day:e.day,
+      audience:e.audience||'Main',
+      meal_type:e.meal_type||'Dinner',
+      meal_name:e.meal_name
+    })}).then(function(r){return r.json();}).catch(function(){return{error:'failed'};});
+  });
+  Promise.all(calls).then(function(results){
+    chatMessages.pop();
+    var ok=results.filter(function(r){return !r.error;}).length;
+    var fail=results.length-ok;
+    var msg=ok+' meal(s) logged'+(fail?' ('+fail+' failed)':'');
+    chatMessages.push({role:'system',content:msg});
+    if(ok){delete grWeekCache[grCurrentWeekStart];if(currentTab==='grocery') loadGrocery();}
+    finishSend();
+  });
 }
 
 function executeResolveMeals(meals){
