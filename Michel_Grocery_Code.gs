@@ -174,7 +174,9 @@ function doPost(e) {
       case 'addMealListItem':       result = addMealListItem(body);       break;
       case 'addMealListItems':      result = addMealListItems(body);      break;
       case 'updateMealListCount':   result = updateMealListCount(body);   break;
+      case 'updateMealListCounts':  result = updateMealListCounts(body);  break;
       case 'removeMealListItem':    result = removeMealListItem(body);    break;
+      case 'removeMealListItems':   result = removeMealListItems(body);   break;
       default:                      result = { error: 'Unknown action: ' + action };
     }
 
@@ -971,6 +973,26 @@ function updateMealListCount(body) {
   }
   sheet.getRange(existing['_rowIndex'], countCol).setValue(count);
   return { success: true, count: count };
+}
+
+// updateMealListCounts — batch. body.items: [{id, count}]. Count <= 0 deletes.
+function updateMealListCounts(body) {
+  var items = body.items || [];
+  if (!items.length) return { error: 'No items provided' };
+  var results = items.map(function(it) { return updateMealListCount(it); });
+  var ok      = results.filter(function(r) { return !r.error; }).length;
+  var errors  = results.filter(function(r) { return r.error; });
+  return { success: true, count: ok, errors: errors };
+}
+
+// removeMealListItems — batch. body.ids: ["1","2",...]
+function removeMealListItems(body) {
+  var ids = body.ids || [];
+  if (!ids.length) return { error: 'No ids provided' };
+  var results = ids.map(function(id) { return removeMealListItem({ id: id }); });
+  var ok      = results.filter(function(r) { return !r.error; }).length;
+  var errors  = results.filter(function(r) { return r.error; });
+  return { success: true, count: ok, errors: errors };
 }
 
 function removeMealListItem(body) {

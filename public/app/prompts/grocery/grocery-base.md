@@ -131,6 +131,19 @@ When the user confirms an action that needs to write to the sheet, output ONE bl
 ]
 </LOG_MEAL_HISTORY>
 
+### Remove items from a list (by ID, no eaten-history side effects)
+<REMOVE_MEAL_LIST_ITEMS>
+{"ids":["12","17"]}
+</REMOVE_MEAL_LIST_ITEMS>
+
+### Update counts of list items (by ID; count <= 0 deletes the row)
+<UPDATE_MEAL_LIST_COUNTS>
+[
+  {"id":"12","count":2},
+  {"id":"17","count":0}
+]
+</UPDATE_MEAL_LIST_COUNTS>
+
 ### Save / regenerate the shopping list (server merges ingredients from Plan × Count)
 <SAVE_SHOPPING_LIST>
 {"audience":"Main"}
@@ -152,6 +165,9 @@ You do not have skill-specific logic in this context. Always load the correct sk
 
 - Stock up Reserve after shopping (back from groceries, items now available):
   Output <LOAD_DOMAIN id="grocery" skill="grocery-stock-up" /> and wait for [SYSTEM: grocery/grocery-stock-up loaded] before proceeding.
+
+- Edit Plan or Reserve directly (remove a meal, change count, drop something I changed my mind about):
+  Output <LOAD_DOMAIN id="grocery" skill="grocery-edit-lists" /> and wait for [SYSTEM: grocery/grocery-edit-lists loaded] before proceeding.
 
 - Log what was eaten (yesterday's dinner, today's lunch, decrements Reserve):
   Output <LOAD_DOMAIN id="grocery" skill="grocery-confirm-plan" /> and wait for [SYSTEM: grocery/grocery-confirm-plan loaded] before proceeding.

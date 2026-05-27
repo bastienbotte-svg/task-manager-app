@@ -2959,6 +2959,22 @@ function handleChatReply(d) {
     catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
     return;
   }
+  var rml=extractBlock(reply,'REMOVE_MEAL_LIST_ITEMS');
+  if(rml){
+    chatMessages.push({role:'assistant',content:rml.rest||'Removing meal list items...'});
+    renderChat();
+    try{executeRemoveMealListItems(JSON.parse(rml.content));}
+    catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
+    return;
+  }
+  var uml=extractBlock(reply,'UPDATE_MEAL_LIST_COUNTS');
+  if(uml){
+    chatMessages.push({role:'assistant',content:uml.rest||'Updating meal list counts...'});
+    renderChat();
+    try{executeUpdateMealListCounts(JSON.parse(uml.content));}
+    catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
+    return;
+  }
   var ssl=extractBlock(reply,'SAVE_SHOPPING_LIST');
   if(ssl){
     chatMessages.push({role:'assistant',content:ssl.rest||'Saving shopping list...'});
@@ -3034,6 +3050,47 @@ function executeSaveMealLists(items){
       else{
         var n=d.count||items.length;
         msg=n+' meal list item(s) written';
+        if(d.errors&&d.errors.length) msg+=' ('+d.errors.length+' failed)';
+      }
+      chatMessages.push({role:'system',content:msg});
+      if(!d.error){delete grWeekCache[grCurrentWeekStart];if(currentTab==='grocery') loadGrocery();}
+      finishSend();
+    });
+}
+
+function executeRemoveMealListItems(payload){
+  var ids = (payload&&payload.ids) ? payload.ids : (Array.isArray(payload)?payload:[]);
+  if(!ids||!ids.length){chatMessages.push({role:'system',content:'No ids provided'});finishSend();return;}
+  chatMessages.push({role:'thinking'});
+  chatSending=true; document.getElementById('chat-send-btn').disabled=true; renderChat();
+  fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'removeMealListItems',ids:ids})})
+    .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+    .then(function(d){
+      chatMessages.pop();
+      var msg;
+      if(d.error){msg='Remove failed: '+d.error;}
+      else{
+        msg=(d.count||0)+' meal list item(s) removed';
+        if(d.errors&&d.errors.length) msg+=' ('+d.errors.length+' failed)';
+      }
+      chatMessages.push({role:'system',content:msg});
+      if(!d.error){delete grWeekCache[grCurrentWeekStart];if(currentTab==='grocery') loadGrocery();}
+      finishSend();
+    });
+}
+
+function executeUpdateMealListCounts(items){
+  if(!Array.isArray(items)||!items.length){chatMessages.push({role:'system',content:'No items provided'});finishSend();return;}
+  chatMessages.push({role:'thinking'});
+  chatSending=true; document.getElementById('chat-send-btn').disabled=true; renderChat();
+  fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'updateMealListCounts',items:items})})
+    .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+    .then(function(d){
+      chatMessages.pop();
+      var msg;
+      if(d.error){msg='Update failed: '+d.error;}
+      else{
+        msg=(d.count||0)+' meal list count(s) updated';
         if(d.errors&&d.errors.length) msg+=' ('+d.errors.length+' failed)';
       }
       chatMessages.push({role:'system',content:msg});
