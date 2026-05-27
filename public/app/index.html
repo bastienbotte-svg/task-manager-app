@@ -270,6 +270,12 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .chat-send{width:30px;height:30px;border-radius:8px;background:#111;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
 .chat-send svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2}
 .chat-send:disabled{background:#ccc;cursor:default}
+.chat-mic{width:30px;height:30px;border-radius:8px;background:#fff;border:1px solid #e0e0de;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.chat-mic svg{width:14px;height:14px;stroke:#888;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.chat-mic.recording{background:#d23;border-color:#d23;animation:micPulse 1.2s ease-in-out infinite}
+.chat-mic.recording svg{stroke:#fff}
+.chat-mic.busy{opacity:0.5;cursor:default}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(221,51,51,0.5)}50%{box-shadow:0 0 0 6px rgba(221,51,51,0)}}
 </style>
 </head>
 <body>
@@ -396,6 +402,9 @@ body{background:#fff;font-family:'Share Tech Mono',monospace;height:100dvh;displ
         <input type="file" id="chat-file-input" accept=".pdf" style="display:none" onchange="handleChatFile(this)">
       </label>
       <textarea id="chat-input" class="chat-textarea" placeholder="Message..." rows="1" onkeydown="chatInputKey(event)" oninput="chatInputResize(this)"></textarea>
+      <button id="chat-mic-btn" class="chat-mic" onclick="toggleChatMic()" title="Voice input">
+        <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </button>
       <button id="chat-send-btn" class="chat-send" onclick="sendChatMsg()">
         <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
@@ -584,6 +593,7 @@ var GAS_TASKS   = 'https://script.google.com/macros/s/AKfycbyG5nZqmwr9Rd5oN2wMX2
 var GAS_FINANCE = 'https://script.google.com/macros/s/AKfycbxVXCs7ehKbwE-M62AlHiLc222Sd4Ms9bRIuVPhaaiYNeDUOzcV8FYromVAFSw_NhCp/exec';
 var GAS_HABITS  = 'https://script.google.com/macros/s/AKfycbyMcx_UAJrf2Cv0KGehO5spLEpUndaxG2L9NV5sgWHhvbtHtTJGNqVxX85YfPl1QqZr/exec';
 var GAS_GROCERY = 'https://script.google.com/macros/s/AKfycbzEk1zPcga3i1turZJ4nPrVWmHCn8LU8tSrCoZ2E9KMNUCHMOhrGBh8PcOeQeJeUPGbqg/exec';
+var GAS_STT     = 'https://script.google.com/macros/s/AKfycbwbYAcNpLSf0vMCbjnRNVVuFPMHaFwkHUjsXYYyPjKc-rue51mjTNg_YAPb0gNRNUmM/exec';
 
 /* ── PDF TEXT EXTRACTION ── */
 if (typeof pdfjsLib !== 'undefined') {
@@ -3289,6 +3299,74 @@ function clearChatFile() {
 
 function chatInputKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMsg(); }
+}
+
+/* ── Chat mic / STT (ElevenLabs Scribe via GAS_STT) ── */
+var sttRecorder = null;
+var sttChunks   = [];
+var sttStream   = null;
+var sttBusy     = false;
+
+function toggleChatMic() {
+  var btn = document.getElementById('chat-mic-btn');
+  if (sttBusy) return;
+  if (sttRecorder && sttRecorder.state === 'recording') { sttRecorder.stop(); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('Microphone not supported');
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+    sttStream = stream;
+    sttChunks = [];
+    var mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
+             : MediaRecorder.isTypeSupported('audio/mp4')  ? 'audio/mp4'
+             : '';
+    sttRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    sttRecorder.ondataavailable = function(ev) { if (ev.data && ev.data.size) sttChunks.push(ev.data); };
+    sttRecorder.onstop = function() {
+      btn.classList.remove('recording');
+      btn.classList.add('busy');
+      sttBusy = true;
+      if (sttStream) { sttStream.getTracks().forEach(function(t) { t.stop(); }); sttStream = null; }
+      var blob = new Blob(sttChunks, { type: sttRecorder.mimeType || 'audio/webm' });
+      blobToBase64(blob).then(function(b64) {
+        return fetch(GAS_STT, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'transcribe', audio: b64, mimeType: blob.type })
+        }).then(function(r) { return r.json(); });
+      }).then(function(d) {
+        sttBusy = false;
+        btn.classList.remove('busy');
+        if (d.error) { showToast('Transcription failed'); return; }
+        var input = document.getElementById('chat-input');
+        var existing = input.value;
+        input.value = existing ? (existing.replace(/\s+$/, '') + ' ' + d.text) : d.text;
+        chatInputResize(input);
+        input.focus();
+      }).catch(function() {
+        sttBusy = false;
+        btn.classList.remove('busy');
+        showToast('Transcription failed');
+      });
+    };
+    sttRecorder.start();
+    btn.classList.add('recording');
+  }).catch(function() {
+    showToast('Microphone permission denied');
+  });
+}
+
+function blobToBase64(blob) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onloadend = function() {
+      var s = reader.result || '';
+      var i = s.indexOf(',');
+      resolve(i >= 0 ? s.slice(i + 1) : s);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 function chatInputResize(el) {
