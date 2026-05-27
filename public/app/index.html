@@ -871,6 +871,7 @@ function submitNewTask(pi){
   var inp=document.getElementById('atv-'+pi);if(!inp)return;
   var name=inp.value.trim();if(!name)return;
   var proj=projects[pi];
+  inp.blur();
   inp.value='';document.getElementById('at-'+pi).style.display='none';
   var tempId='__t'+Date.now();
   projects[pi].tasks.push({t:name,d:false,id:tempId});
