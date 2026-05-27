@@ -3337,16 +3337,18 @@ function toggleChatMic() {
       }).then(function(d) {
         sttBusy = false;
         btn.classList.remove('busy');
-        if (d.error) { showToast('Transcription failed'); return; }
+        console.log('[STT] response:', d);
+        if (d.error) { showToast('STT: ' + d.error.slice(0,80)); return; }
         var input = document.getElementById('chat-input');
         var existing = input.value;
         input.value = existing ? (existing.replace(/\s+$/, '') + ' ' + d.text) : d.text;
         chatInputResize(input);
         input.focus();
-      }).catch(function() {
+      }).catch(function(err) {
         sttBusy = false;
         btn.classList.remove('busy');
-        showToast('Transcription failed');
+        console.error('[STT] fetch error:', err);
+        showToast('STT network error');
       });
     };
     sttRecorder.start();
