@@ -149,6 +149,17 @@ When the user confirms an action that needs to write to the sheet, output ONE bl
 {"audience":"Main"}
 </SAVE_SHOPPING_LIST>
 
+### Add ad-hoc items to the shopping list (no skill load needed)
+<ADD_SHOPPING_ITEMS>
+[
+  {"item":"Toilet paper","quantity":1,"unit":"roll","category":"Household"},
+  {"item":"Milk","quantity":"","unit":"","category":"Dairy"}
+]
+</ADD_SHOPPING_ITEMS>
+- `quantity`, `unit`, `category` are optional — pass empty string if unknown.
+- `week_start` is omitted; GAS defaults to the current week.
+- `source` is set automatically to `"chat"` by GAS.
+
 ### Move shopping items between weeks
 <UPDATE_SHOPPING_WEEK>
 {"ids":["12","13"],"week_start":"2026-05-26"}
@@ -175,11 +186,13 @@ You do not have skill-specific logic in this context. Always load the correct sk
 - Build shopping list (what do I need to buy from current Plan):
   Output <LOAD_DOMAIN id="grocery" skill="grocery-shopping-list" /> and wait for [SYSTEM: grocery/grocery-shopping-list loaded] before proceeding.
 
+- Add ad-hoc items to the shopping list (add toilet paper, also need milk, add X to the list):
+  No skill load needed. Confirm the item(s) with the user, infer category if possible, then emit <ADD_SHOPPING_ITEMS> directly.
+
 - Move items between shopping weeks (carry over, last week's list):
   Output <LOAD_DOMAIN id="grocery" skill="grocery-manage-list" /> and wait for [SYSTEM: grocery/grocery-manage-list loaded] before proceeding.
 
-Never attempt to write to the sheet without the relevant skill loaded.
-If unsure which skill applies, ask one short clarifying question.
+Never attempt to write to the sheet without the relevant skill loaded — except for <ADD_SHOPPING_ITEMS> which is handled at the base level.
 
 ---
 
