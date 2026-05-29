@@ -77,10 +77,10 @@ function synthesizeSpeech(body) {
   if (!body.text || !body.text.trim()) return { error: 'Missing text field' };
 
   var voiceId = body.voiceId || '21m00Tcm4TlvDq8ikWAM'; // Rachel (default)
-  var modelId = body.modelId || 'eleven_turbo_v2_5';
+  var modelId = body.modelId || 'eleven_flash_v2_5';
 
   var res = UrlFetchApp.fetch(
-    'https://api.elevenlabs.io/v1/text-to-speech/' + voiceId + '?output_format=mp3_44100_128',
+    'https://api.elevenlabs.io/v1/text-to-speech/' + voiceId + '?output_format=mp3_22050_32',
     {
       method: 'post',
       contentType: 'application/json',
