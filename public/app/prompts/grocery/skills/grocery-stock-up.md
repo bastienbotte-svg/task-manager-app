@@ -42,14 +42,19 @@ Verify each meal_name against the MEALS catalog (case-insensitive). If a name ha
 "I don't see [name] in the dish list. Skip it for now, or add it via the MEALS sub-tab first?"
 
 ### Step 3 — Confirm the batch
+
+CRITICAL: For each item, look up the current Reserve count from MEAL_LISTS (injected by base). If a row already exists for the same (audience, meal_name) in Reserve, show the math explicitly so the user can catch absolute-vs-delta mismatches before the backend increments.
+
 Show plainly:
 
 "Adding to Reserve:
-- Main · Lasagnette ×1
-- Main · Spaghetti bolognesa ×2
-- Lucas · Pasta carbonara ×3
+- Main · Lasagnette: 0 + 1 → 1
+- Main · Spaghetti bolognesa: 1 + 2 → 3
+- Lucas · Pasta carbonara: 0 + 3 → 3
 
 Confirm?"
+
+If the user phrased intent as absolute ("set X to N", "I have N in reserve now") rather than delta ("add N"), DO NOT use this skill — refuse and instruct loading grocery-edit-lists, which uses UPDATE_MEAL_LIST_COUNTS for absolute SET.
 
 CHOICES::Add to Reserve?|Yes|Adjust counts|Cancel
 

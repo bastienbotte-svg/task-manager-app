@@ -3016,6 +3016,14 @@ function handleChatReply(d) {
     catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
     return;
   }
+  var asi=extractBlock(reply,'ADD_SHOPPING_ITEMS');
+  if(asi){
+    chatMessages.push({role:'assistant',content:asi.rest||'Adding shopping items...'});
+    renderChat();
+    try{executeAddShoppingItems(JSON.parse(asi.content));}
+    catch(e){chatMessages.push({role:'system',content:'Parse error: '+e.message});finishSend();}
+    return;
+  }
   var skillLoad = checkForSkillLoad(reply);
   if (skillLoad) {
     var cleanReply = reply.replace(/<LOAD_DOMAIN[^/]*\/>/, '').trim();
@@ -3167,6 +3175,25 @@ function executeUpdateShoppingWeek(data){
       chatMessages.push({role:'thinking'});
       renderChat();
       doApiCall(null);
+    });
+}
+
+function executeAddShoppingItems(items){
+  chatMessages.push({role:'thinking'});
+  chatSending=true; document.getElementById('chat-send-btn').disabled=true; renderChat();
+  fetch(GAS_GROCERY,{method:'POST',body:JSON.stringify({action:'addShoppingItems',items:items,week_start:grCurrentWeekStart})})
+    .then(function(r){return r.json();}).catch(function(){return{error:'failed'};})
+    .then(function(d){
+      chatMessages.pop();
+      var msg=d.error?'Save failed: '+d.error:(d.count||items.length)+' shopping item(s) added';
+      chatMessages.push({role:'system',content:msg});
+      if(!d.error){
+        if(!groceryWeekData) groceryWeekData={};
+        if(!groceryWeekData.shopping_list) groceryWeekData.shopping_list=[];
+        items.forEach(function(i){groceryWeekData.shopping_list.push({Item:i.Item||i.item,Quantity:String(i.Quantity||i.quantity||''),Unit:i.Unit||i.unit||'',Category:i.Category||i.category||'',Checked:'FALSE'});});
+        delete grWeekCache[grCurrentWeekStart];
+      }
+      finishSend();
     });
 }
 
