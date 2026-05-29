@@ -3359,13 +3359,19 @@ var CONV_VAD_MIN_SPEECH_MS = 300;
 /* Mic button: tap = toggle conv mode, hold ≥500ms = push-to-talk dictation */
 var micLongPressTimer = null;
 var micLongPressFired = false;
+var micPressActive    = false;
 var pttRecorder = null;
 var pttChunks   = [];
 var pttStream   = null;
 var MIC_LONG_PRESS_MS = 500;
 
 function micPress(e) {
+  if (micPressActive) return;
   if (e && e.preventDefault) e.preventDefault();
+  micPressActive = true;
+  if (e && e.target && e.target.setPointerCapture && e.pointerId !== undefined) {
+    try { e.target.setPointerCapture(e.pointerId); } catch(err) {}
+  }
   micLongPressFired = false;
   if (convMode) return; // in conv mode, only short-tap to exit
   micLongPressTimer = setTimeout(function() {
@@ -3375,6 +3381,8 @@ function micPress(e) {
 }
 
 function micRelease(e) {
+  if (!micPressActive) return;
+  micPressActive = false;
   if (micLongPressTimer) { clearTimeout(micLongPressTimer); micLongPressTimer = null; }
   if (micLongPressFired) {
     stopPushToTalk();
