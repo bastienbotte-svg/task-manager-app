@@ -24,6 +24,7 @@ function doPost(e) {
 
     switch (action) {
       case 'transcribe': result = transcribeAudio(body); break;
+      case 'synthesize': result = synthesizeSpeech(body); break;
       default:           result = { error: 'Unknown action: ' + action };
     }
 
@@ -68,6 +69,38 @@ function transcribeAudio(body) {
   catch (e) { return { error: 'Invalid JSON from ElevenLabs: ' + text }; }
 
   return { text: parsed.text || '', raw: parsed };
+}
+
+function synthesizeSpeech(body) {
+  var key = PropertiesService.getScriptProperties().getProperty('ELEVENLABS_API_KEY');
+  if (!key) return { error: 'ELEVENLABS_API_KEY not set in Script Properties' };
+  if (!body.text || !body.text.trim()) return { error: 'Missing text field' };
+
+  var voiceId = body.voiceId || '21m00Tcm4TlvDq8ikWAM'; // Rachel (default)
+  var modelId = body.modelId || 'eleven_turbo_v2_5';
+
+  var res = UrlFetchApp.fetch(
+    'https://api.elevenlabs.io/v1/text-to-speech/' + voiceId + '?output_format=mp3_44100_128',
+    {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'xi-api-key': key, 'accept': 'audio/mpeg' },
+      payload: JSON.stringify({
+        text: body.text,
+        model_id: modelId,
+        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+      }),
+      muteHttpExceptions: true
+    }
+  );
+
+  var code = res.getResponseCode();
+  if (code < 200 || code >= 300) {
+    return { error: 'ElevenLabs TTS HTTP ' + code + ': ' + res.getContentText().slice(0, 200) };
+  }
+
+  var bytes = res.getBlob().getBytes();
+  return { audio: Utilities.base64Encode(bytes), mimeType: 'audio/mpeg' };
 }
 
 function jsonOut(obj) {
