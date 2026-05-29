@@ -3351,6 +3351,7 @@ var convSpeaking      = false;
 var convSpeechStartTs = 0;
 var convSilenceTs     = 0;
 var convCurrentAudio  = null;
+var convTTSQueue      = [];
 var convState         = 'idle';
 var CONV_VAD_THRESHOLD     = 0.018;
 var CONV_VAD_SILENCE_MS    = 800;
@@ -3487,6 +3488,7 @@ function stopConvMode() {
   if (convAudioCtx) { try { convAudioCtx.close(); } catch(e) {} convAudioCtx = null; }
   convAnalyser = null;
   if (convCurrentAudio) { try { convCurrentAudio.pause(); } catch(e) {} convCurrentAudio = null; }
+  convTTSQueue = [];
   convSpeaking = false; convSpeechStartTs = 0; convSilenceTs = 0;
   setConvState('idle');
 }
@@ -3580,26 +3582,58 @@ function endConvUtterance() {
   }
 }
 
+function splitConvChunks(text) {
+  if (text.length < 80) return [text];
+  var parts = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+  parts = parts.map(function(s){ return s.trim(); }).filter(Boolean);
+  if (parts.length <= 1) return parts;
+  // First sentence alone for fast start; rest grouped (max ~3 extra chunks)
+  var chunks = [parts[0]];
+  var rest = parts.slice(1);
+  var groupSize = Math.max(1, Math.ceil(rest.length / 3));
+  for (var i = 0; i < rest.length; i += groupSize) {
+    chunks.push(rest.slice(i, i + groupSize).join(' '));
+  }
+  return chunks;
+}
+
+function ttsChunkFetch(chunk) {
+  return fetch(GAS_STT, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'synthesize', text: chunk })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.error || !d.audio) { console.warn('[TTS]', d.error || 'no audio'); return null; }
+    return new Audio('data:' + (d.mimeType || 'audio/mpeg') + ';base64,' + d.audio);
+  }).catch(function(err) {
+    console.error('[TTS] fetch error:', err);
+    return null;
+  });
+}
+
 function speakConv(text) {
   if (!convMode || !text) return;
   setConvState('speaking');
-  fetch(GAS_STT, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'synthesize', text: text })
-  }).then(function(r) { return r.json(); }).then(function(d) {
-    if (!convMode) return;
-    if (d.error || !d.audio) {
-      console.warn('[TTS]', d.error || 'no audio');
-      setConvState('listening'); return;
-    }
-    var a = new Audio('data:' + (d.mimeType || 'audio/mpeg') + ';base64,' + d.audio);
-    convCurrentAudio = a;
-    a.onended = function() { convCurrentAudio = null; if (convMode) setConvState('listening'); };
-    a.onerror = function() { convCurrentAudio = null; if (convMode) setConvState('listening'); };
-    a.play().catch(function() { if (convMode) setConvState('listening'); });
-  }).catch(function(err) {
-    console.error('[TTS] fetch error:', err);
+  var chunks = splitConvChunks(text);
+  if (!chunks.length) { setConvState('listening'); return; }
+  // Fire all chunks in parallel; play sequentially
+  convTTSQueue = chunks.map(ttsChunkFetch);
+  playConvQueue(0);
+}
+
+function playConvQueue(idx) {
+  if (!convMode) return;
+  if (idx >= convTTSQueue.length) {
+    convCurrentAudio = null;
     if (convMode) setConvState('listening');
+    return;
+  }
+  convTTSQueue[idx].then(function(audio) {
+    if (!convMode) return;
+    if (!audio) { playConvQueue(idx + 1); return; }
+    convCurrentAudio = audio;
+    audio.onended  = function() { convCurrentAudio = null; playConvQueue(idx + 1); };
+    audio.onerror  = function() { convCurrentAudio = null; playConvQueue(idx + 1); };
+    audio.play().catch(function() { playConvQueue(idx + 1); });
   });
 }
 
