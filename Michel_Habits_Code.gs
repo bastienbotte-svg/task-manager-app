@@ -293,7 +293,7 @@ function doGet(e) {
     var histFrom = new Date(); histFrom.setHours(0,0,0,0);
     histFrom.setDate(histFrom.getDate() - 18 * 7);
     var logStart = formatDateISO(histFrom);
-    var weekLog = allLog.filter(function(r) {
+    var gridLog = allLog.filter(function(r) {
       return r['Date'] >= logStart && r['Date'] <= bounds.sunday;
     });
 
@@ -356,11 +356,11 @@ function doGet(e) {
 
     // Strip internal _rowIndex before returning
     activities.forEach(function(act) { delete act['_rowIndex']; });
-    weekLog.forEach(function(r)      { delete r['_rowIndex']; });
+    gridLog.forEach(function(r)      { delete r['_rowIndex']; });
 
     return jsonOut({
       activities:     activities,
-      log:            weekLog,
+      log:            gridLog,
       streaks:        streaks,
       credits:        credits,
       week_counts:    week_counts,
