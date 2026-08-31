@@ -1,6 +1,6 @@
 {
   "name": "Task Manager",
-  "short_name": "Michel",
+  "short_name": "Task Manager",
   "start_url": "/task-manager-app/",
   "scope": "/task-manager-app/",
   "display": "standalone",
