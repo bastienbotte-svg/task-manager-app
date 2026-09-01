@@ -579,7 +579,8 @@ function projectCard(p,planned){
   var body='<div class="expand-body'+(isOpen?' open':'')+'">'+
     '<div class="sec-lbl">TO DO ('+p.open.length+')</div>'+
     (p.open.length?p.open.map(function(t){return taskRow(p.id,t);}).join(''):'<div class="trow"><div class="tname" style="opacity:.5">Nothing left here</div></div>')+
-    '<div class="addrow"><div class="plusdot">+</div><input id="add-'+p.id+'" class="addinp" placeholder="Add a task..." onclick="event.stopPropagation()" onkeydown="addTaskKey(event,\''+p.id+'\')"></div>'+
+    '<form class="addrow" onclick="event.stopPropagation()" onsubmit="return addTaskSubmit(event,\''+p.id+'\')"><div class="plusdot">+</div>'+
+    '<input id="add-'+p.id+'" class="addinp" placeholder="Add a task..." enterkeyhint="done" autocomplete="off"></form>'+
     doneBlock+
     '<div class="cardacts">'+
       '<div class="icon-btn" title="Edit project" onclick="event.stopPropagation();openProject(\''+p.id+'\')">'+gearSvg+'</div>'+
@@ -637,16 +638,18 @@ function tickTask(pid,tid){
 }
 /* renderAll rebuilds the list, so the input the user was in is destroyed.
    Refocus the fresh one to keep typing task after task. */
-function addTaskKey(e,pid){
-  if(e.key!=='Enter')return;
-  var name=e.target.value.trim();
-  if(!name)return;
+function addTaskSubmit(e,pid){
+  e.preventDefault();
+  var inp0=document.getElementById('add-'+pid);
+  var name=inp0?inp0.value.trim():'';
+  if(!name)return false;
   var p=findP(pid), t={id:'__t'+Date.now(),name:name,due:'',done:false};
   p.open.push(t);
   renderAll();
   var inp=document.getElementById('add-'+pid);
   if(inp)inp.focus();
   createTask(p,t);
+  return false;
 }
 /* Shared by both add paths: swap the temp id for the real one on success. */
 function createTask(p,t){
@@ -768,7 +771,8 @@ function renderPmTasks(){
         '<div class="tmv'+(i===n-1?' off':'')+'" onclick="moveTask('+i+',1)">'+dnSvg+'</div>'+
         '</div></div>';
     }).join('')+
-    '<div class="addrow"><input id="pm-add" class="addinp" placeholder="Add a task..." onkeydown="pmAddKey(event)"></div>'+
+    '<form class="addrow" onsubmit="return pmAddSubmit(event)">'+
+    '<input id="pm-add" class="addinp" placeholder="Add a task..." enterkeyhint="done" autocomplete="off"></form>'+
     pmDoneBlock();
 }
 /* Completed tasks sit under the add row, struck through and without arrows —
@@ -781,18 +785,20 @@ function pmDoneBlock(){
       return '<div class="trow done"><div class="tname pmt" onclick="openTask(\'' + pmId + '\',\'' + t.id + '\')">'+esc(t.name)+'</div></div>';
     }).join('');
 }
-/* Enter commits the task and leaves a fresh empty line focused, so a list can
-   be typed straight through without reaching for anything. */
-function pmAddKey(e){
-  if(e.key!=='Enter')return;
-  var v=e.target.value.trim();
-  if(!v)return;
+/* Submitting commits the task and leaves a fresh empty line focused, so a
+   list can be typed straight through without reaching for anything. */
+function pmAddSubmit(e){
+  e.preventDefault();
+  var inp0=document.getElementById('pm-add');
+  var v=inp0?inp0.value.trim():'';
+  if(!v)return false;
   var t={id:'__t'+Date.now(),name:v,due:'',done:false};
   pmTasks.push(t);
   renderPmTasks();
   document.getElementById('pm-add').focus();
   // a staged task is written when the project itself is created
   if(pmId){renderAll();createTask(findP(pmId),t);}
+  return false;
 }
 function renderPmCats(){
   document.getElementById('pm-cats').innerHTML=categories.map(function(c){
