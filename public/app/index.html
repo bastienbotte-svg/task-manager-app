@@ -15,7 +15,8 @@
 <script src="ui.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#000;font-family:'Share Tech Mono',monospace;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+html{overscroll-behavior:none}
+body{background:#000;font-family:'Share Tech Mono',monospace;height:100dvh;display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:none}
 .topbar{flex-shrink:0;background:#000;padding:20px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #fff}
 .app-title{font-family:'Share Tech Mono',monospace;font-size:15px;color:#fff;letter-spacing:0.02em}
 .topbar-actions{display:flex;gap:7px}
@@ -82,7 +83,10 @@ body{background:#000;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .hm i{width:100%;aspect-ratio:1;border-radius:2px;display:block}
 /* ── TASKS PANES ── */
 .tk-content{position:relative;overflow:hidden;flex:1}
-.tk-view{position:absolute;inset:0;overflow-y:auto;display:none;scrollbar-width:none}
+/* overflow-y:auto makes the browser compute overflow-x as auto too, so a pane
+   could be dragged sideways on its own and fight the swipe. Pin X shut and
+   stop the rubber-band from chaining out to the page. */
+.tk-view{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;display:none;scrollbar-width:none}
 .tk-view.active{display:block}
 .tk-view::-webkit-scrollbar{display:none}
 .tkpane .content{padding-bottom:40px}
@@ -910,10 +914,15 @@ function goPane(next){
     pane=next;
   });
 }
-var sx=0,sy=0;
+var sx=0,sy=0,swipeOff=false;
 var tk=document.getElementById('tk-content');
-tk.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+tk.addEventListener('touchstart',function(e){
+  sx=e.touches[0].clientX;sy=e.touches[0].clientY;
+  // the category row scrolls sideways on its own; a drag there is not a swipe
+  swipeOff=!!(e.target.closest&&e.target.closest('.chips'));
+},{passive:true});
 tk.addEventListener('touchend',function(e){
+  if(swipeOff)return;
   var dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
   if(Math.abs(dx)<55||Math.abs(dx)<Math.abs(dy))return;
   goPane(dx<0?pane+1:pane-1);
