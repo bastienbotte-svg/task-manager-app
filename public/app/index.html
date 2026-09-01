@@ -161,6 +161,25 @@ body{background:#000;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .pm-tasks .addrow{margin-top:5px}
 .pm-tasks .sec-lbl.done-lbl{margin-top:12px;padding-top:10px;border-top:1px solid #444}
 .empty{font-size:10px;color:#777;padding:18px 0;line-height:1.6}
+
+/* SESSIONS — dated divider on the card, editable head in the vignette */
+.sdiv{display:flex;align-items:center;gap:8px;margin:12px 0 2px}
+.sdiv i{flex:1;height:1px;background:#fff;opacity:0.35}
+.dark .sdiv i{background:#111}
+.sdiv span{font-size:8px;letter-spacing:0.1em;white-space:nowrap;color:#fff}
+.dark .sdiv span{color:#111}
+.sdiv.none span{opacity:0.5}
+.pm-sess{border-top:1px solid #444;margin-top:12px;padding-top:10px}
+.pm-sess .trow{padding:5px 0}
+.shead{display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:7px 9px;border:1px solid #fff;border-radius:8px;flex-wrap:wrap}
+.shead .sname{font-size:9px;letter-spacing:0.08em;flex:1;min-width:100%;color:#fff}
+.shead .stimes{display:flex;align-items:center;gap:4px;font-size:9px;color:#8f8f8f;flex:1}
+.shead input{font-family:inherit;font-size:9px;background:#000;color:#fff;border:1px solid #555;border-radius:5px;padding:3px 5px;outline:none;color-scheme:dark}
+.shead input[type=time]{width:64px}
+.shead .sx{font-size:13px;color:#fff;cursor:pointer;padding:0 5px;user-select:none}
+.pm-sess .addrow{margin-top:8px}
+.spill{font-size:8px;letter-spacing:0.08em;border:1px solid #fff;border-radius:5px;padding:2px 7px;cursor:pointer;flex-shrink:0;user-select:none;min-width:38px;text-align:center;color:#fff}
+.spill.none{border-color:#555;color:#666}
 </style>
 </head>
 <body>
@@ -503,7 +522,7 @@ function loadHabits(){
 
 /* ══ TASKS ══ */
 /* ── ENDPOINT ── */
-var GAS_TASKS = 'https://script.google.com/macros/s/AKfycbxC3O_ZZwGC8hmu83RNxL792OTk5IxDWhecSQ24WKJK5Xu-la8zLOofqdXODMmmab5q/exec';
+var GAS_TASKS = 'https://script.google.com/macros/s/AKfycbwgIIxDgqhCKEzwtJxsyPwvfHChpB9cppX_yilZzTUE0KlYnh6ysHfjZ27WR94pJCJ0/exec';
 
 var TODAY = todayISO();
 
@@ -532,16 +551,29 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 
 /* BUILD */
 function build(data){
-  var byParent={};
+  var byParent={}, sessByParent={};
   data.tasks.forEach(function(t){(byParent[t.Parent_ID]=byParent[t.Parent_ID]||[]).push(t);});
+  (data.sessions||[]).forEach(function(s){(sessByParent[s.Parent_ID]=sessByParent[s.Parent_ID]||[]).push(s);});
+  function mapTask(t,done){
+    return {id:t.ID,name:t.Name,due:t.Due_Date||'',sess:t.Session_ID||'',done:done};
+  }
   return data.projects.map(function(p){
     var ts=byParent[p.ID]||[];
     return {
       id:p.ID, name:p.Name, cat:p.Category||'', due:p.Due_Date||'',
-      open:ts.filter(function(t){return !isDone(t.Status);}).map(function(t){return {id:t.ID,name:t.Name,due:t.Due_Date||'',done:false};}),
-      done:ts.filter(function(t){return isDone(t.Status);}).map(function(t){return {id:t.ID,name:t.Name,due:t.Due_Date||'',done:true};})
+      sessions:(sessByParent[p.ID]||[]).map(function(s){
+        return {id:s.ID,date:s.Due_Date||'',start:s.Start_Time||'',end:s.End_Time||''};
+      }),
+      open:ts.filter(function(t){return !isDone(t.Status);}).map(function(t){return mapTask(t,false);}),
+      done:ts.filter(function(t){return isDone(t.Status);}).map(function(t){return mapTask(t,true);})
     };
   });
+}
+/* A session is shown by its day and slot. No date yet means no calendar event
+   exists for it, and the label says so rather than pretending. */
+function sessLabel(s){
+  if(!s.date)return 'NO DATE YET';
+  return fmtDue(s.date).toUpperCase()+(s.start&&s.end?'  '+s.start+' - '+s.end:'  ALL DAY');
 }
 function pct(p){var tot=p.open.length+p.done.length;return tot?Math.round(p.done.length/tot*100):0;}
 
@@ -557,6 +589,30 @@ function taskRow(pid,t){
   return '<div class="trow'+(t.done?' done':'')+'" onclick="event.stopPropagation();openTask(\''+pid+'\',\''+t.id+'\')">'+
     '<div class="tck'+(t.done?' ticked':'')+'" onclick="event.stopPropagation();tickTask(\''+pid+'\',\''+t.id+'\')">'+(t.done?tickSvg:'')+'</div>'+
     '<div class="tname">'+esc(t.name)+'</div>'+right+'</div>';
+}
+
+/* The open tasks on a card. A project with no sessions renders exactly as it
+   always has; give it one and the same rows group under a dated divider. The
+   divider is a label, not a control — sessions are edited in the vignette. */
+function openBlock(p){
+  if(!p.sessions.length){
+    return '<div class="sec-lbl">TO DO ('+p.open.length+')</div>'+
+      (p.open.length?p.open.map(function(t){return taskRow(p.id,t);}).join('')
+                    :'<div class="trow"><div class="tname" style="opacity:.5">Nothing left here</div></div>');
+  }
+  var out='';
+  p.sessions.forEach(function(s){
+    var mine=p.open.filter(function(t){return t.sess===s.id;});
+    out+='<div class="sdiv'+(s.date?'':' none')+'"><i></i><span>'+sessLabel(s)+'</span><i></i></div>'+
+      (mine.length?mine.map(function(t){return taskRow(p.id,t);}).join('')
+                  :'<div class="trow"><div class="tname" style="opacity:.4">Nothing left in this session</div></div>');
+  });
+  var loose=p.open.filter(function(t){return !t.sess;});
+  if(loose.length){
+    out+='<div class="sdiv none"><i></i><span>UNSCHEDULED</span><i></i></div>'+
+      loose.map(function(t){return taskRow(p.id,t);}).join('');
+  }
+  return out;
 }
 
 function projectCard(p,planned){
@@ -581,8 +637,7 @@ function projectCard(p,planned){
   }
 
   var body='<div class="expand-body'+(isOpen?' open':'')+'">'+
-    '<div class="sec-lbl">TO DO ('+p.open.length+')</div>'+
-    (p.open.length?p.open.map(function(t){return taskRow(p.id,t);}).join(''):'<div class="trow"><div class="tname" style="opacity:.5">Nothing left here</div></div>')+
+    openBlock(p)+
     '<form class="addrow" onclick="event.stopPropagation()" onsubmit="return addTaskSubmit(event,\''+p.id+'\')"><div class="plusdot">+</div>'+
     '<input id="add-'+p.id+'" class="addinp" placeholder="Add a task..." enterkeyhint="done" autocomplete="off"></form>'+
     doneBlock+
@@ -749,17 +804,105 @@ function openProject(id){
     body:'<input id="pm-name" class="ov-inp" placeholder="Area | title...">'+
          '<div class="ov-lbl">CATEGORY</div><div class="chips" id="pm-cats"></div>'+
          calField('pm','DEADLINE (BLANK = BACKLOG)',p?p.due:'')+
+         '<div class="pm-sess" id="pm-sess"></div>'+
          '<div class="pm-tasks" id="pm-tasks"></div>',
     del:p?{fn:deleteProject}:null,
     save:{label:p?'Save':'Create',fn:saveProject},
     onOpen:function(){
       document.getElementById('pm-name').value=p?p.name:'';
       renderPmCats();
+      renderPmSess();
       renderPmTasks();
       if(!p)setTimeout(function(){document.getElementById('pm-name').focus();},50);
     }
   });
 }
+/* SESSIONS — a working slot under the project, and one calendar event each.
+   Only a saved project can hold them: a session needs a Parent_ID.
+   Native date and time inputs rather than the calField picker, because three
+   fields have to stay on one line and the picker is a full-width sheet. */
+function renderPmSess(){
+  var el=document.getElementById('pm-sess');
+  if(!el)return;
+  if(!pmId){el.innerHTML='';return;}
+  var p=findP(pmId);
+  el.innerHTML='<div class="sec-lbl">SESSIONS ('+p.sessions.length+')</div>'+
+    (p.sessions.length?'':'<div class="trow"><div class="tname" style="opacity:.45">No sessions. Add one to put this project in the calendar.</div></div>')+
+    p.sessions.map(function(s,i){
+      var n=p.open.concat(p.done).filter(function(t){return t.sess===s.id;}).length;
+      return '<div class="shead">'+
+        '<span class="sname">S'+(i+1)+' &middot; '+n+' TASK'+(n===1?'':'S')+'</span>'+
+        '<div class="stimes">'+
+          '<input type="date" value="'+esc(s.date)+'" onchange="pmSessField(\''+s.id+'\',\'date\',this.value)">'+
+          '<input type="time" value="'+esc(s.start)+'" onchange="pmSessField(\''+s.id+'\',\'start\',this.value)">'+
+          '<span>-</span>'+
+          '<input type="time" value="'+esc(s.end)+'" onchange="pmSessField(\''+s.id+'\',\'end\',this.value)">'+
+        '</div>'+
+        '<span class="sx" onclick="pmDropSession(\''+s.id+'\')">&times;</span>'+
+      '</div>';
+    }).join('')+
+    '<div class="addrow" onclick="pmAddSession()"><div class="plusdot">+</div>'+
+    '<span class="addinp" style="color:#777">Add a session...</span></div>';
+}
+function pmAddSession(){
+  if(!pmId)return;
+  var p=findP(pmId), s={id:'__s'+Date.now(),date:'',start:'',end:''};
+  p.sessions.push(s);
+  renderPmSess();renderPmTasks();renderAll();
+  post({action:'addItem',Type:'SESSION',Parent_ID:p.id,Name:'',Category:p.cat},
+    function(){
+      var i=p.sessions.indexOf(s);
+      if(i!==-1)p.sessions.splice(i,1);
+      renderPmSess();renderPmTasks();renderAll();
+    },
+    function(d){if(d&&d.id)s.id=String(d.id);});
+}
+/* Committing a field does not re-render this block: the input the user just
+   used would be destroyed under them, and only the card needs redrawing. */
+function pmSessField(sid,key,val){
+  var p=findP(pmId), s=p.sessions.filter(function(x){return x.id===sid;})[0];
+  if(!s)return;
+  var before=s[key];
+  s[key]=val;
+  renderAll();
+  var payload={action:'updateItem',id:sid};
+  payload[key==='date'?'Due_Date':(key==='start'?'Start_Time':'End_Time')]=val;
+  post(payload,function(){s[key]=before;renderPmSess();renderAll();});
+}
+/* Removing a session frees its tasks — they go back to unscheduled, never
+   deleted. The backend clears Session_ID and drops the calendar event. */
+function pmDropSession(sid){
+  var p=findP(pmId), i=p.sessions.map(function(s){return s.id;}).indexOf(sid);
+  if(i===-1)return;
+  var removed=p.sessions.splice(i,1)[0];
+  var freed=p.open.concat(p.done).filter(function(t){return t.sess===sid;});
+  freed.forEach(function(t){t.sess='';});
+  renderPmSess();renderPmTasks();renderAll();
+  post({action:'deleteTask',id:sid},function(){
+    p.sessions.splice(i,0,removed);
+    freed.forEach(function(t){t.sess=sid;});
+    renderPmSess();renderPmTasks();renderAll();
+  });
+}
+/* The pill walks a task through the sessions and back out to none. */
+function pmCycleSess(tid){
+  var p=findP(pmId);
+  var t=p.open.concat(p.done).filter(function(x){return x.id===tid;})[0];
+  if(!t||!p.sessions.length)return;
+  var before=t.sess;
+  var i=p.sessions.map(function(s){return s.id;}).indexOf(t.sess)+1;
+  t.sess=(i>=p.sessions.length)?'':p.sessions[i].id;
+  renderPmSess();renderPmTasks();renderAll();
+  post({action:'updateItem',id:tid,Session_ID:t.sess},
+       function(){t.sess=before;renderPmSess();renderPmTasks();renderAll();});
+}
+function sessPill(p,t){
+  if(!p.sessions.length)return '';
+  var i=p.sessions.map(function(s){return s.id;}).indexOf(t.sess);
+  return '<span class="spill'+(i===-1?' none':'')+'" onclick="event.stopPropagation();pmCycleSess(\''+t.id+'\')">'+
+    (i===-1?'NONE':'S'+(i+1))+'</span>';
+}
+
 function renderPmTasks(){
   var el=document.getElementById('pm-tasks');
   if(!el)return;
@@ -770,7 +913,7 @@ function renderPmTasks(){
       var name=pmId
         ? '<div class="tname pmt" onclick="openTask(\'' + pmId + '\',\'' + t.id + '\')">'+esc(t.name)+'</div>'
         : '<div class="tname">'+esc(t.name)+'</div>';
-      return '<div class="trow">'+name+'<div class="tacts">'+
+      return '<div class="trow">'+name+(pmId?sessPill(findP(pmId),t):'')+'<div class="tacts">'+
         '<div class="tmv'+(i===0?' off':'')+'" onclick="moveTask('+i+',-1)">'+upSvg+'</div>'+
         '<div class="tmv'+(i===n-1?' off':'')+'" onclick="moveTask('+i+',1)">'+dnSvg+'</div>'+
         '</div></div>';

@@ -6,6 +6,28 @@ function getSpreadsheet() {
   return SpreadsheetApp.openById(SHEET_ID);
 }
 
+// Which columns hold a clock time rather than a date. Typing 09:00 into a
+// cell makes Sheets store a time value, which comes back as a Date pinned to
+// 1899-12-30 — formatting that as a date yields "1899-12-30" and the calendar
+// sync then builds an invalid start. Read those columns as HH:mm instead.
+var TIME_COLS = { 'Start_Time': true, 'End_Time': true };
+
+function cellText(header, v) {
+  if (v === undefined || v === null) return '';
+  if (TIME_COLS[header]) {
+    if (v instanceof Date) {
+      return ('0' + v.getHours()).slice(-2) + ':' + ('0' + v.getMinutes()).slice(-2);
+    }
+    // Normalised on the way out so the app's time field, which only accepts
+    // HH:mm, is never handed a "9:00" it has to reject silently.
+    return hhmm(v);
+  }
+  if (v instanceof Date) {
+    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  return String(v);
+}
+
 function sheetToObjects(sheet) {
   var lastRow = sheet.getLastRow();
   var lastCol = sheet.getLastColumn();
@@ -22,14 +44,7 @@ function sheetToObjects(sheet) {
     if (!hasData) continue;
 
     var obj = {};
-    headers.forEach(function(h, j) {
-      var v = row[j];
-      if (v instanceof Date) {
-        obj[h] = Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-      } else {
-        obj[h] = (v !== undefined && v !== null) ? String(v) : '';
-      }
-    });
+    headers.forEach(function(h, j) { obj[h] = cellText(h, row[j]); });
     rows.push(obj);
   }
   return rows;
@@ -76,9 +91,10 @@ function doGet(e) {
     var items      = sheetToObjects(itemsSheet);
     var projects   = items.filter(function(r) { return r['Type'] === 'PROJECT'; });
     var tasks      = items.filter(function(r) { return r['Type'] === 'TASK'; });
+    var sessions   = items.filter(function(r) { return r['Type'] === 'SESSION'; });
     var categories = sheetToObjects(catSheet);
 
-    return jsonOut({ projects: projects, tasks: tasks, categories: categories });
+    return jsonOut({ projects: projects, tasks: tasks, sessions: sessions, categories: categories });
   } catch (err) {
     return jsonOut({ error: err.toString() });
   }
@@ -113,8 +129,12 @@ function doPost(e) {
 // ─── Actions ──────────────────────────────────────────────────────────────────
 
 // addItem — appends a new row to Items
-// Required body fields: Type (PROJECT or TASK), Name
-// Optional: Parent_ID, Status, Priority, Category, Due_Date, Estimated_Duration, Notes
+// Required body fields: Type (PROJECT, TASK or SESSION), Name
+// Optional: Parent_ID, Status, Priority, Category, Due_Date, Start_Time,
+//           End_Time, Session_ID, Notes
+// A SESSION is a working slot under a project: Parent_ID is the project,
+// Due_Date is the day, Start_Time and End_Time bound it. One session row is
+// one calendar event.
 // The app fires these in parallel — adding four tasks sends four POSTs at
 // once. Without a lock each execution reads getNextId() before any of the
 // others has appended, so they all claim the same ID. Serialise the
@@ -123,6 +143,7 @@ function addItem(body) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(25000); } catch (e) { return { error: 'Sheet busy, please retry' }; }
 
+  var result;
   try {
     var ss    = getSpreadsheet();
     var sheet = ss.getSheetByName('Items');
@@ -143,10 +164,15 @@ function addItem(body) {
 
     sheet.appendRow(row);
     SpreadsheetApp.flush();
-    return { success: true, id: newId };
+    result = { success: true, id: newId };
   } finally {
     lock.releaseLock();
   }
+
+  // Calendar work stays outside the lock: the Calendar API is slow and the
+  // next writer only needs the row to exist, not its event.
+  if (body['Parent_ID']) reconcileProject(body['Parent_ID']);
+  return result;
 }
 
 // updateItem — finds a row by ID in Items and updates specified fields
@@ -183,6 +209,15 @@ function updateItem(body) {
   });
 
   sheet.getRange(rowIndex, 1, 1, headers.length).setValues([existing]);
+
+  // A project row owns its events; a task or session row points at one.
+  var typeIdx   = headers.indexOf('Type');
+  var parentIdx = headers.indexOf('Parent_ID');
+  var owner = (typeIdx !== -1 && String(existing[typeIdx]).trim() === 'PROJECT')
+    ? targetId
+    : (parentIdx !== -1 ? String(existing[parentIdx]).trim() : '');
+  if (owner) reconcileProject(owner);
+
   return { success: true, id: targetId };
 }
 
@@ -195,6 +230,8 @@ function archiveProject(body) {
 
   var projectId = String(body.project_id || '').trim();
   if (!projectId) return { error: 'Missing project_id' };
+
+  dropProjectEvents(projectId);
 
   var lastRow = itemsSheet.getLastRow();
   var lastCol = itemsSheet.getLastColumn();
@@ -274,7 +311,9 @@ function addInbox(body) {
 }
 
 // ─── deleteTask ──────────────────────────────────────────────────────────────
-// Hard-deletes a single TASK row from Items. No archive.
+// Hard-deletes a single TASK or SESSION row from Items. No archive.
+// Deleting a session drops its calendar event and releases its tasks back to
+// unscheduled — the tasks themselves are never touched.
 // Required body fields: id
 function deleteTask(body) {
   var ss      = getSpreadsheet();
@@ -285,12 +324,33 @@ function deleteTask(body) {
   if (lastRow < 2) return { error: 'No rows' };
 
   var targetId = String(body.id);
-  var idValues = sheet.getRange(2, idCol, lastRow - 1, 1).getValues();
-  for (var i = 0; i < idValues.length; i++) {
-    if (String(idValues[i][0]) === targetId) {
-      sheet.deleteRow(i + 2);
-      return { success: true };
+  var rows     = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  var typeIdx  = headers.indexOf('Type');
+  var parIdx   = headers.indexOf('Parent_ID');
+  var sessIdx  = headers.indexOf('Session_ID');
+  var evIdx    = headers.indexOf('Calendar_Event_ID');
+
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][idCol - 1]) !== targetId) continue;
+
+    var owner  = parIdx !== -1 ? String(rows[i][parIdx]).trim() : '';
+    var isSess = typeIdx !== -1 && String(rows[i][typeIdx]).trim() === 'SESSION';
+
+    if (isSess) {
+      if (evIdx !== -1) dropEvent(String(rows[i][evIdx]).trim());
+      // release its tasks before the row goes, or they point at nothing
+      if (sessIdx !== -1) {
+        for (var j = 0; j < rows.length; j++) {
+          if (String(rows[j][sessIdx]).trim() === targetId) {
+            sheet.getRange(j + 2, sessIdx + 1).setValue('');
+          }
+        }
+      }
     }
+
+    sheet.deleteRow(i + 2);
+    if (owner) reconcileProject(owner);
+    return { success: true };
   }
   return { error: 'Task not found: ' + targetId };
 }
@@ -306,6 +366,8 @@ function deleteProject(body) {
 
   var projectId = String(body.project_id || '').trim();
   if (!projectId) return { error: 'Missing project_id' };
+
+  dropProjectEvents(projectId);
 
   var lastRow = sheet.getLastRow();
   var lastCol = sheet.getLastColumn();
@@ -410,4 +472,256 @@ function reorderRows(body) {
   });
 
   return { success: true };
+}
+
+// ─── migrateColumns ──────────────────────────────────────────────────────────
+// Run once from the editor before the first deployment that syncs calendars.
+// Adds the columns the sync needs and retires Estimated_Duration by renaming
+// it to Start_Time. Idempotent — a second run reports nothing to do.
+function migrateColumns() {
+  var ss    = getSpreadsheet();
+  var items = ss.getSheetByName('Items');
+  var cats  = ss.getSheetByName('Categories');
+  if (!items) return 'Items tab not found';
+  if (!cats)  return 'Categories tab not found';
+
+  var added   = [];
+  var headers = getHeaders(items);
+
+  var oldIdx = headers.indexOf('Estimated_Duration');
+  if (oldIdx !== -1 && headers.indexOf('Start_Time') === -1) {
+    items.getRange(1, oldIdx + 1).setValue('Start_Time');
+    added.push('Items.Estimated_Duration renamed to Start_Time');
+    headers = getHeaders(items);
+  }
+
+  ['Start_Time', 'End_Time', 'Session_ID', 'Calendar_Event_ID'].forEach(function(h) {
+    if (headers.indexOf(h) !== -1) return;
+    items.getRange(1, items.getLastColumn() + 1).setValue(h);
+    headers = getHeaders(items);
+    added.push('Items.' + h);
+  });
+
+  if (getHeaders(cats).indexOf('Calendar_ID') === -1) {
+    cats.getRange(1, cats.getLastColumn() + 1).setValue('Calendar_ID');
+    added.push('Categories.Calendar_ID');
+  }
+
+  // Sheets turns "09:00" into a time value, which reads back as a Date on
+  // 1899-12-30. Pin both columns to plain text so they stay strings, then
+  // rewrite anything already stored as a time.
+  headers = getHeaders(items);
+  ['Start_Time', 'End_Time'].forEach(function(h) {
+    var i = headers.indexOf(h);
+    if (i === -1) return;
+    items.getRange(1, i + 1, items.getMaxRows()).setNumberFormat('@');
+
+    var last = items.getLastRow();
+    if (last < 2) return;
+    // Two things to repair: a value still held as a time, and one Sheets has
+    // already rendered as text without its leading zero ("9:00").
+    var rng  = items.getRange(2, i + 1, last - 1, 1);
+    var vals = rng.getValues();
+    var hit  = false;
+    for (var r = 0; r < vals.length; r++) {
+      var was = vals[r][0];
+      if (was === '' || was === null) continue;
+      var fixed = cellText(h, was);
+      if (fixed !== String(was)) { vals[r][0] = fixed; hit = true; }
+    }
+    if (hit) { rng.setValues(vals); added.push(h + ' repaired'); }
+  });
+
+  SpreadsheetApp.flush();
+  var msg = added.length ? 'Added: ' + added.join(', ') : 'Nothing to do, already migrated.';
+  Logger.log(msg);
+  return msg;
+}
+
+// ─── Calendar ────────────────────────────────────────────────────────────────
+// One SESSION row is one calendar event. Which calendar it lands on comes from
+// the project's category: Categories.Calendar_ID holds the calendar address.
+// Blank or unrecognised falls back to the account's default calendar, so a new
+// category still syncs somewhere rather than failing.
+
+function isDone(status) {
+  return String(status || '').trim().toLowerCase() === 'done';
+}
+
+// Any of '9:00', '09:00', '09:00:00' → '09:00:00'. Anything else → '', which
+// the caller reads as "no time given" and falls back to an all-day event.
+// Sheets renders a time value without a leading zero, so 'H:mm' does turn up.
+function hms(t) {
+  var m = String(t || '').trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!m) return '';
+  var h = Number(m[1]);
+  if (h > 23 || Number(m[2]) > 59) return '';
+  return ('0' + h).slice(-2) + ':' + m[2] + ':' + (m[3] || '00');
+}
+
+// 'H:mm' / 'HH:mm' / 'HH:mm:ss' → 'HH:mm'. Unparseable → ''.
+function hhmm(t) {
+  var s = hms(t);
+  return s ? s.slice(0, 5) : '';
+}
+
+function writeCell(sheet, rowIndex, headers, name, value) {
+  var i = headers.indexOf(name);
+  if (i !== -1) sheet.getRange(rowIndex, i + 1).setValue(value);
+}
+
+function categoryCalendarIds() {
+  var sheet = getSpreadsheet().getSheetByName('Categories');
+  var ids   = [];
+  if (!sheet) return ids;
+  sheetToObjects(sheet).forEach(function(r) {
+    var c = String(r['Calendar_ID'] || '').trim();
+    if (c && ids.indexOf(c) === -1) ids.push(c);
+  });
+  return ids;
+}
+
+function calendarForCategory(cat) {
+  var wanted = String(cat || '').trim().toLowerCase();
+  var sheet  = getSpreadsheet().getSheetByName('Categories');
+  var id     = '';
+  if (sheet && wanted) {
+    sheetToObjects(sheet).forEach(function(r) {
+      if (String(r['Name'] || '').trim().toLowerCase() === wanted) {
+        id = String(r['Calendar_ID'] || '').trim();
+      }
+    });
+  }
+  if (id) {
+    var cal = CalendarApp.getCalendarById(id);
+    if (cal) return cal;
+  }
+  return CalendarApp.getDefaultCalendar();
+}
+
+// Deletes an event wherever it lives. Changing a project's category moves its
+// sessions to a different calendar, and CalendarApp cannot move an event
+// between calendars — the old one has to go and a new one takes its place.
+function dropEvent(eventId) {
+  eventId = String(eventId || '').trim();
+  if (!eventId) return;
+  var ids = [''].concat(categoryCalendarIds());   // '' = default calendar
+  for (var i = 0; i < ids.length; i++) {
+    try {
+      var cal = ids[i] ? CalendarApp.getCalendarById(ids[i]) : CalendarApp.getDefaultCalendar();
+      if (!cal) continue;
+      var ev = cal.getEventById(eventId);
+      if (ev) { ev.deleteEvent(); return; }
+    } catch (_) {}
+  }
+}
+
+// Every event belonging to a project, used before the rows are deleted or
+// archived and there is nothing left to reconcile against.
+function dropProjectEvents(projectId) {
+  projectId = String(projectId || '').trim();
+  if (!projectId) return;
+  var sheet = getSpreadsheet().getSheetByName('Items');
+  if (!sheet) return;
+  sheetToObjects(sheet).forEach(function(r) {
+    if (r['Type'] === 'SESSION' && String(r['Parent_ID']).trim() === projectId) {
+      dropEvent(r['Calendar_Event_ID']);
+    }
+  });
+}
+
+// ─── reconcileProject ────────────────────────────────────────────────────────
+// Rebuilds every calendar event for one project from the sheet. Recomputing
+// the lot is cheaper than working out which single row moved, and it self-heals
+// after a failed write. An event exists when a session has a date and at least
+// one task; its description is that session's tasks as a checklist, so ticking
+// one off in the app updates the event.
+function reconcileProject(projectId) {
+  projectId = String(projectId || '').trim();
+  if (!projectId) return;
+
+  var sheet   = getSpreadsheet().getSheetByName('Items');
+  if (!sheet) return;
+  var headers = getHeaders(sheet);
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2 || headers.indexOf('Calendar_Event_ID') === -1) return;
+
+  var col = {};
+  headers.forEach(function(h, i) { col[h] = i; });
+
+  function cell(row, name) {
+    var i = col[name];
+    return (i === undefined) ? '' : cellText(name, row[i]).trim();
+  }
+
+  var values   = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  var project  = null, sessions = [], tasks = [];
+
+  values.forEach(function(row, i) {
+    var rec = { row: row, rowIndex: i + 2 };
+    if (cell(row, 'ID') === projectId && cell(row, 'Type') === 'PROJECT') project = rec;
+    else if (cell(row, 'Parent_ID') === projectId) {
+      if (cell(row, 'Type') === 'SESSION') sessions.push(rec); else tasks.push(rec);
+    }
+  });
+  if (!project || !sessions.length) return;
+
+  var title = cell(project.row, 'Name') || '(no title)';
+  var cal   = calendarForCategory(cell(project.row, 'Category'));
+
+  sessions.forEach(function(s) {
+    var sid     = cell(s.row, 'ID');
+    var date    = cell(s.row, 'Due_Date');
+    var start   = cell(s.row, 'Start_Time');
+    var end     = cell(s.row, 'End_Time');
+    var eventId = cell(s.row, 'Calendar_Event_ID');
+    var mine    = tasks.filter(function(t) { return cell(t.row, 'Session_ID') === sid; });
+
+    // No date, or nothing in it: there should be no event.
+    if (!date || !mine.length) {
+      if (eventId) {
+        dropEvent(eventId);
+        writeCell(sheet, s.rowIndex, headers, 'Calendar_Event_ID', '');
+      }
+      return;
+    }
+
+    var desc = mine.map(function(t) {
+      return (isDone(cell(t.row, 'Status')) ? '[x] ' : '[ ] ') + cell(t.row, 'Name');
+    }).join('\n');
+
+    var ev = null;
+    if (eventId) {
+      try { ev = cal.getEventById(eventId); } catch (_) {}
+      // Not on the target calendar means the category changed, or someone
+      // deleted it by hand. Either way the id is stale.
+      if (!ev) { dropEvent(eventId); eventId = ''; }
+    }
+
+    // A time that will not parse is treated as no time at all, so a bad cell
+    // yields an all-day event rather than an event on an invalid date.
+    var from0 = hms(start), to0 = hms(end);
+    if (from0 && to0) {
+      var from = new Date(date + 'T' + from0);
+      var to   = new Date(date + 'T' + to0);
+      if (ev) {
+        ev.setTitle(title); ev.setDescription(desc); ev.setTime(from, to);
+      } else {
+        ev = cal.createEvent(title, from, to, { description: desc });
+      }
+    } else {
+      var p   = date.split('-');
+      var day = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+      if (ev) {
+        ev.setTitle(title); ev.setDescription(desc);
+        if (!ev.isAllDayEvent()) ev.setAllDayDate(day);
+      } else {
+        ev = cal.createAllDayEvent(title, day, { description: desc });
+      }
+    }
+
+    if (ev.getId() !== eventId) {
+      writeCell(sheet, s.rowIndex, headers, 'Calendar_Event_ID', ev.getId());
+    }
+  });
 }
