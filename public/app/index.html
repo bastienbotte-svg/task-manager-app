@@ -802,13 +802,21 @@ function renderPmCats(){
 /* The + chip swaps itself for an inline field — no native prompt. */
 function pmNewCat(){
   var el=document.getElementById('pm-cats');
-  el.insertAdjacentHTML('beforeend','<input id="pm-newcat" class="catinp" placeholder="New..." onkeydown="pmNewCatKey(event)">');
+  el.insertAdjacentHTML('beforeend','<input id="pm-newcat" class="catinp" placeholder="New..." onkeydown="pmNewCatKey(event)" onblur="pmNewCatCommit()">');
   document.getElementById('pm-newcat').focus();
 }
+/* Enter is not the only way out of this field — tapping straight into the
+   task rows blurs it, and some phone keyboards report the return key as
+   keyCode 229 rather than key "Enter". Commit on any of those, and again
+   from saveProject, so typed text is never silently dropped. */
 function pmNewCatKey(e){
-  if(e.key!=='Enter')return;
-  var v=e.target.value.trim();
-  if(!v)return;
+  if(e.key==='Enter'||e.keyCode===13){e.preventDefault();pmNewCatCommit();}
+}
+function pmNewCatCommit(){
+  var el=document.getElementById('pm-newcat');
+  if(!el)return;
+  var v=el.value.trim();
+  if(!v){el.remove();renderPmCats();return;}
   var c={ID:'__c'+Date.now(),Name:v};
   categories.push(c);
   pmCat=v;
@@ -824,6 +832,7 @@ function pmNewCatKey(e){
 }
 function closeProject(){flushOrder();pmId=null;Modal.close();}
 function saveProject(){
+  pmNewCatCommit();   // honour a category typed but never confirmed
   var name=document.getElementById('pm-name').value.trim();
   if(!name)return;
   var due=calValue('pm'), editing=pmId, staged=pmTasks;
@@ -833,7 +842,7 @@ function saveProject(){
     p.name=name;p.cat=pmCat;p.due=due;
     closeProject();
     renderAll();
-    goPane(due?0:1);
+    goPane(due?1:2);
     post({action:'updateItem',id:p.id,Name:name,Category:pmCat,Due_Date:due},
          function(){p.name=before.name;p.cat=before.cat;p.due=before.due;renderAll();});
   }else{
@@ -841,7 +850,7 @@ function saveProject(){
     projects.push(np);
     closeProject();
     renderAll();
-    goPane(due?0:1);
+    goPane(due?1:2);
     post({action:'addItem',Type:'PROJECT',Name:name,Category:pmCat,Status:'To Do',Due_Date:due},
       function(){
         var i=projects.indexOf(np);

@@ -115,26 +115,38 @@ function doPost(e) {
 // addItem — appends a new row to Items
 // Required body fields: Type (PROJECT or TASK), Name
 // Optional: Parent_ID, Status, Priority, Category, Due_Date, Estimated_Duration, Notes
+// The app fires these in parallel — adding four tasks sends four POSTs at
+// once. Without a lock each execution reads getNextId() before any of the
+// others has appended, so they all claim the same ID. Serialise the
+// read-then-append, and flush so the next holder sees the new row.
 function addItem(body) {
-  var ss    = getSpreadsheet();
-  var sheet = ss.getSheetByName('Items');
-  if (!sheet) return { error: 'Items tab not found' };
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(25000); } catch (e) { return { error: 'Sheet busy, please retry' }; }
 
-  var headers = getHeaders(sheet);
-  var newId   = getNextId(sheet);
-  var ts      = now();
+  try {
+    var ss    = getSpreadsheet();
+    var sheet = ss.getSheetByName('Items');
+    if (!sheet) return { error: 'Items tab not found' };
 
-  var row = headers.map(function(h) {
-    switch (h) {
-      case 'ID':            return String(newId);
-      case 'Created_Date':  return ts;
-      case 'Last_Modified': return ts;
-      default:              return body[h] !== undefined ? String(body[h]) : '';
-    }
-  });
+    var headers = getHeaders(sheet);
+    var newId   = getNextId(sheet);
+    var ts      = now();
 
-  sheet.appendRow(row);
-  return { success: true, id: newId };
+    var row = headers.map(function(h) {
+      switch (h) {
+        case 'ID':            return String(newId);
+        case 'Created_Date':  return ts;
+        case 'Last_Modified': return ts;
+        default:              return body[h] !== undefined ? String(body[h]) : '';
+      }
+    });
+
+    sheet.appendRow(row);
+    SpreadsheetApp.flush();
+    return { success: true, id: newId };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // updateItem — finds a row by ID in Items and updates specified fields
@@ -325,31 +337,39 @@ function deleteProject(body) {
 // so a repeat call returns the existing category rather than duplicating it.
 // Required body fields: name
 function addCategory(body) {
-  var ss    = getSpreadsheet();
-  var sheet = ss.getSheetByName('Categories');
-  if (!sheet) return { error: 'Categories tab not found' };
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(25000); } catch (e) { return { error: 'Sheet busy, please retry' }; }
 
-  var name = String(body.name || '').trim();
-  if (!name) return { error: 'Missing name' };
+  try {
+    var ss    = getSpreadsheet();
+    var sheet = ss.getSheetByName('Categories');
+    if (!sheet) return { error: 'Categories tab not found' };
 
-  var existing = sheetToObjects(sheet);
-  for (var i = 0; i < existing.length; i++) {
-    if (String(existing[i]['Name']).trim().toLowerCase() === name.toLowerCase()) {
-      return { success: true, id: existing[i]['ID'], existed: true };
+    var name = String(body.name || '').trim();
+    if (!name) return { error: 'Missing name' };
+
+    var existing = sheetToObjects(sheet);
+    for (var i = 0; i < existing.length; i++) {
+      if (String(existing[i]['Name']).trim().toLowerCase() === name.toLowerCase()) {
+        return { success: true, id: existing[i]['ID'], existed: true };
+      }
     }
+
+    var headers = getHeaders(sheet);
+    var newId   = getNextId(sheet);
+
+    var row = headers.map(function(h) {
+      if (h === 'ID')   return String(newId);
+      if (h === 'Name') return name;
+      return '';
+    });
+
+    sheet.appendRow(row);
+    SpreadsheetApp.flush();
+    return { success: true, id: newId };
+  } finally {
+    lock.releaseLock();
   }
-
-  var headers = getHeaders(sheet);
-  var newId   = getNextId(sheet);
-
-  var row = headers.map(function(h) {
-    if (h === 'ID')   return String(newId);
-    if (h === 'Name') return name;
-    return '';
-  });
-
-  sheet.appendRow(row);
-  return { success: true, id: newId };
 }
 
 // ─── reorderRows ─────────────────────────────────────────────────────────────

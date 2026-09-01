@@ -12,8 +12,10 @@
 
 (function injectUiCss(){
   var css=[
-  '.modal{display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.72);align-items:center;justify-content:center;padding:18px}',
-  '.sheet{width:100%;max-width:420px;max-height:86dvh;overflow-y:auto;scrollbar-width:none;background:#000;border:1.5px solid #fff;border-radius:14px;padding:16px 16px 14px;animation:uipop .16s ease}',
+  /* height and top are driven by fitModals() so the sheet tracks the visual
+     viewport and stays above an open keyboard rather than behind it */
+  '.modal{display:flex;position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.72);align-items:center;justify-content:center;padding:18px}',
+  '.sheet{width:100%;max-width:420px;max-height:100%;overflow-y:auto;scrollbar-width:none;background:#000;border:1.5px solid #fff;border-radius:14px;padding:16px 16px 14px;animation:uipop .16s ease}',
   '.sheet::-webkit-scrollbar{display:none}',
   '@keyframes uipop{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}',
   '.ov-tag{font-size:9px;color:#fff;letter-spacing:0.08em;margin-bottom:10px}',
@@ -54,6 +56,23 @@
 /* ── MODAL SHELL ── stackable: a task vignette can open over a project one */
 var Modal=(function(){
   var stack=[];
+
+  /* An open keyboard shrinks the visual viewport but not the layout viewport,
+     so a fixed full-height overlay would sit half-covered. Track the visual
+     viewport instead: the sheet then spans kerb-to-keyboard and scrolls
+     internally when its fields no longer fit. */
+  function fitModals(){
+    var vv=window.visualViewport;
+    stack.forEach(function(el){
+      if(vv){el.style.top=vv.offsetTop+'px';el.style.height=vv.height+'px';}
+      else  {el.style.top='0px';el.style.height='100%';}
+    });
+  }
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',fitModals);
+    window.visualViewport.addEventListener('scroll',fitModals);
+  }
+
   function open(o){
     var el=document.createElement('div');
     el.className='modal';
@@ -76,13 +95,20 @@ var Modal=(function(){
       else if(act==='del'&&o.del)o.del.fn();
       else if(act==='save'&&o.save)o.save.fn();
     });
+    // keep a focused field visible once the keyboard has finished animating
+    el.addEventListener('focusin',function(ev){
+      setTimeout(function(){
+        if(ev.target&&ev.target.scrollIntoView)ev.target.scrollIntoView({block:'center'});
+      },250);
+    });
     document.body.appendChild(el);
     stack.push(el);
+    fitModals();
     if(o.onOpen)o.onOpen(el);
     return el;
   }
   function close(){var el=stack.pop();if(el)el.remove();}
-  return {open:open,close:close};
+  return {open:open,close:close,fit:fitModals};
 })();
 
 /* ── CALENDAR FIELD ── */
