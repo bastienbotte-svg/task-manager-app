@@ -999,7 +999,7 @@ function saveProject(){
     post({action:'updateItem',id:p.id,Name:name,Category:pmCat,Due_Date:due},
          function(){p.name=before.name;p.cat=before.cat;p.due=before.due;renderAll();});
   }else{
-    var np={id:'__p'+Date.now(),name:name,cat:pmCat,due:due,open:staged,done:[]};
+    var np={id:'__p'+Date.now(),name:name,cat:pmCat,due:due,sessions:[],open:staged,done:[]};
     projects.push(np);
     closeProject();
     renderAll();
