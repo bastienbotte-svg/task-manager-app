@@ -12,6 +12,7 @@
 <link rel="apple-touch-startup-image" href="icons/icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="ui.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#000;font-family:'Share Tech Mono',monospace;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
@@ -24,16 +25,8 @@ body{background:#000;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .scroll-area{flex:1;overflow-y:auto;background:#000;scrollbar-width:none}
 .scroll-area::-webkit-scrollbar{display:none}
 .content{padding:16px 18px 24px}
-.inbox-overlay{display:none;position:fixed;bottom:0;left:0;right:0;background:#000;border-top:1px solid #fff;padding:14px 18px 18px;z-index:100}
-.inbox-overlay.open{display:block}
-.inbox-tag{font-family:'Share Tech Mono',monospace;font-size:9px;color:#fff;letter-spacing:0.08em;margin-bottom:8px}
 .inbox-input{width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;color:#fff;background:#000;border:1.5px solid #fff;border-radius:10px;padding:10px 12px;resize:none;height:72px;outline:none}
 .inbox-input::placeholder{color:#666}
-.inbox-actions{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
-.inbox-cancel{font-family:'Share Tech Mono',monospace;font-size:10px;color:#fff;cursor:pointer}
-.inbox-send{font-family:'Share Tech Mono',monospace;font-size:10px;color:#000;background:#fff;border:none;border-radius:8px;padding:7px 16px;cursor:pointer}
-.inbox-del{font-family:'Share Tech Mono',monospace;font-size:10px;color:#fff;background:#000;border:1px solid #fff;border-radius:8px;padding:6px 12px;cursor:pointer;display:none}
-.inbox-del.show{display:inline-block}
 .card{background:#000;border-radius:14px;padding:13px 14px;margin-bottom:8px;overflow:hidden;user-select:none}
 .card.dashed{border:1.5px dashed #fff}
 .card.dark{background:#fff;border:1.5px solid #fff}
@@ -74,7 +67,7 @@ body{background:#000;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .splash{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.5s ease}
 .splash.hidden{opacity:0;pointer-events:none}
 .splash img{width:60%;max-width:260px;object-fit:contain}
-.day-btn{font-family:'Share Tech Mono',monospace;font-size:9px;padding:5px 9px;border-radius:6px;border:1px solid #fff;color:#fff;cursor:pointer;user-select:none}
+.day-btn{font-family:'Share Tech Mono',monospace;font-size:9px;padding:5px 9px;border-radius:6px;border:1px solid #fff;color:#fff;cursor:pointer;user-select:none;white-space:nowrap}
 .day-btn.sel{background:#fff;color:#000;border-color:#fff}
 .bolt{width:10px;height:10px;display:inline-block;fill:currentColor}
 .hm-block{--g:3px;--gutter:20px;margin-bottom:10px}
@@ -87,6 +80,83 @@ body{background:#000;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 .hm{display:flex;gap:var(--g);flex:1;min-width:0}
 .hm-col{display:flex;flex-direction:column;gap:var(--g);flex:1;min-width:0}
 .hm i{width:100%;aspect-ratio:1;border-radius:2px;display:block}
+/* ── TASKS PANES ── */
+.tk-content{position:relative;overflow:hidden;flex:1}
+.tk-view{position:absolute;inset:0;overflow-y:auto;display:none;scrollbar-width:none}
+.tk-view.active{display:block}
+.tk-view::-webkit-scrollbar{display:none}
+.tkpane .content{padding-bottom:40px}
+.pane-pills{display:flex;gap:5px;margin-bottom:14px}
+.chips{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.catinp{font-family:inherit;font-size:9px;padding:5px 9px;border-radius:6px;border:1px solid #fff;background:#000;color:#fff;outline:none;width:96px;flex-shrink:0}
+.catinp::placeholder{color:#666}
+
+/* card internals that differ from the habits card, so scoped to the panes */
+.tkpane .card-top{align-items:flex-start}
+.tkpane .csub{margin-top:3px;letter-spacing:0.06em}
+.tkpane .cright{align-items:flex-start;text-align:right}
+.tkpane .bnum{text-align:left}
+.tkpane .nsub{font-size:9px;line-height:12px;letter-spacing:0.08em;margin-top:0;margin-bottom:4px;text-align:right}
+.tkpane .dark .bnum{color:#111}
+.tkpane .muted .bnum,.tkpane .dashed .bnum{color:#fff}
+.tkpane .dark .nsub{color:#111}
+.tkpane .muted .nsub,.tkpane .dashed .nsub{color:#fff}
+
+/* PROGRESS */
+.prow{display:flex;align-items:center;gap:9px;margin-top:11px}
+.pbar{flex:1;height:3px;border-radius:2px;overflow:hidden;background:#8a8a8a}
+.dark .pbar{background:#ccc}
+.pbar i{display:block;height:100%;background:#fff}
+.dark .pbar i{background:#111}
+.pct{font-size:9px;letter-spacing:0.06em;white-space:nowrap}
+.dark .pct{color:#111}.muted .pct,.dashed .pct{color:#fff}
+
+/* TASK ROWS — also used inside the project vignette, so global */
+.sec-lbl{font-size:8px;letter-spacing:0.1em;color:#fff;margin-bottom:6px}
+.dark .sec-lbl{color:#111}
+.trow{display:flex;align-items:center;gap:10px;padding:6px 0}
+.tck{width:18px;height:18px;border-radius:50%;border:1.5px solid #fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.dark .tck{border-color:#111}
+.tck svg{width:9px;height:9px;fill:none;stroke-width:2.5;stroke:#000}
+.muted .tck.ticked{background:#fff;border-color:#fff}
+.dark .tck.ticked{background:#111;border-color:#111}
+.dark .tck svg{stroke:#fff}
+.tname{font-size:10px;flex:1;min-width:0;color:#fff;line-height:1.35}
+.dark .tname{color:#111}
+.trow.done .tname{text-decoration:line-through;opacity:0.45}
+.tdue{font-size:9px;letter-spacing:0.06em;color:#fff;flex-shrink:0}
+.dark .tdue{color:#111}
+.tdue.late{border:1px solid #fff;border-radius:4px;padding:1px 5px}
+.dark .tdue.late{border-color:#111}
+.tacts{display:flex;gap:4px;flex-shrink:0}
+.tmv{width:20px;height:20px;border-radius:6px;border:1px solid #fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.dark .tmv{border-color:#111}
+.tmv svg{width:8px;height:8px;fill:none;stroke:#fff;stroke-width:2.5}
+.dark .tmv svg{stroke:#111}
+.tmv.off{opacity:0.25;pointer-events:none}
+.subtog{display:flex;align-items:center;gap:6px;font-size:8px;letter-spacing:0.1em;color:#fff;cursor:pointer;margin-top:10px;padding-top:9px;border-top:1px solid #444}
+.dark .subtog{color:#111;border-top-color:#ccc}
+.subtog .arw{font-size:9px}
+.done-list{display:none;margin-top:4px}
+.done-list.open{display:block}
+.addrow{display:flex;align-items:center;gap:10px;margin-top:8px}
+.addrow .plusdot{width:18px;height:18px;border-radius:50%;border:1.5px dashed #fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;line-height:1}
+.dark .addrow .plusdot{border-color:#111;color:#111}
+.addinp{flex:1;background:transparent;border:none;outline:none;font-family:inherit;font-size:10px;color:#fff}
+.dark .addinp{color:#111}
+.addinp::placeholder{color:#777}
+.dark .addinp::placeholder{color:#999}
+.cardacts{display:flex;justify-content:flex-end;gap:6px;margin-top:10px}
+.dark .cardacts .icon-btn{border-color:#111;background:#fff}
+.dark .cardacts .icon-btn svg{stroke:#111}
+.planbtn{font-size:9px;letter-spacing:0.08em;color:#000;background:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-family:inherit;flex-shrink:0}
+.pm-tasks{border-top:1px solid #444;margin-top:12px;padding-top:10px}
+.pm-tasks .trow{padding:5px 0}
+.pm-tasks .tname.pmt{cursor:pointer}
+.pm-tasks .addrow{margin-top:5px}
+.pm-tasks .sec-lbl.done-lbl{margin-top:12px;padding-top:10px;border-top:1px solid #444}
+.empty{font-size:10px;color:#777;padding:18px 0;line-height:1.6}
 </style>
 </head>
 <body>
@@ -98,54 +168,40 @@ body{background:#000;font-family:'Share Tech Mono',monospace;height:100dvh;displ
 <div class="topbar" id="topbar">
   <span class="app-title" id="topbar-title">HABITS</span>
   <div class="topbar-actions">
-    <div class="icon-btn plus-btn" id="btn-plus" onclick="openNewHabit()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+    <div class="icon-btn plus-btn" id="btn-plus" onclick="onPlus()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
   </div>
 </div>
 
 <!-- HABITS -->
-<div class="scroll-area"><div class="content">
-  <div class="day-lbl" id="today-lbl">TODAY — WEDNESDAY</div>
-  <div id="habit-list"></div>
-</div></div>
+<div class="tk-content" id="tk-content">
 
-<!-- NEW / EDIT HABIT OVERLAY -->
-<div class="inbox-overlay" id="new-habit-overlay">
-  <div class="inbox-tag" id="nh-title">NEW HABIT</div>
-  <input id="nh-name" class="inbox-input" style="height:40px;margin-bottom:6px" placeholder="Habit name...">
-  <input id="nh-cat" class="inbox-input" style="height:40px;margin-bottom:8px" placeholder="Category (optional)...">
-  <div style="margin-bottom:10px">
-    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#fff;margin-bottom:6px;letter-spacing:0.06em">FREQUENCY</div>
-    <div style="display:flex;gap:5px">
-      <div class="day-btn sel" id="nf-weekly" onclick="setNhFreq('weekly')">Weekly</div>
-      <div class="day-btn" id="nf-count" onclick="setNhFreq('count')">Count</div>
-      <div class="day-btn" id="nf-interval" onclick="setNhFreq('interval')">Interval</div>
+  <!-- PANE 0 - HABITS -->
+  <div class="tk-view active" id="tk-habits"><div class="content">
+    <div class="day-lbl" id="today-lbl">TODAY — WEDNESDAY</div>
+    <div id="habit-list"></div>
+  </div></div>
+
+  <!-- PANE 1 - PLANNED -->
+  <div class="tk-view tkpane" id="tk-planned"><div class="content">
+    <div class="pane-pills">
+      <div class="day-btn sel" onclick="goPane(1)">Planned</div>
+      <div class="day-btn" onclick="goPane(2)">Backlog</div>
     </div>
-  </div>
-  <div id="nh-days-section" style="margin-bottom:10px">
-    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#fff;margin-bottom:6px;letter-spacing:0.06em">DAYS</div>
-    <div style="display:flex;gap:5px;flex-wrap:wrap">
-      <div class="day-btn" id="nb-Mon" onclick="toggleNbDay('Mon')">Mon</div>
-      <div class="day-btn" id="nb-Tue" onclick="toggleNbDay('Tue')">Tue</div>
-      <div class="day-btn" id="nb-Wed" onclick="toggleNbDay('Wed')">Wed</div>
-      <div class="day-btn" id="nb-Thu" onclick="toggleNbDay('Thu')">Thu</div>
-      <div class="day-btn" id="nb-Fri" onclick="toggleNbDay('Fri')">Fri</div>
-      <div class="day-btn" id="nb-Sat" onclick="toggleNbDay('Sat')">Sat</div>
-      <div class="day-btn" id="nb-Sun" onclick="toggleNbDay('Sun')">Sun</div>
+    <div class="day-lbl">BY DEADLINE</div>
+    <div id="planned-list"></div>
+  </div></div>
+
+  <!-- PANE 2 - BACKLOG -->
+  <div class="tk-view tkpane" id="tk-backlog"><div class="content">
+    <div class="pane-pills">
+      <div class="day-btn" onclick="goPane(1)">Planned</div>
+      <div class="day-btn sel" onclick="goPane(2)">Backlog</div>
     </div>
-  </div>
-  <div id="nh-target-section" style="margin-bottom:10px;display:none">
-    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#fff;margin-bottom:6px;letter-spacing:0.06em">TARGET PER WEEK</div>
-    <input id="nh-target" class="inbox-input" type="number" min="1" max="14" style="height:40px" placeholder="e.g. 3">
-  </div>
-  <div id="nh-interval-section" style="margin-bottom:10px;display:none">
-    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#fff;margin-bottom:6px;letter-spacing:0.06em">EVERY N DAYS</div>
-    <input id="nh-interval" class="inbox-input" type="number" min="1" max="365" style="height:40px" placeholder="e.g. 14">
-  </div>
-  <div class="inbox-actions">
-    <span class="inbox-cancel" onclick="closeNewHabit()">Cancel</span>
-    <button class="inbox-del" id="nh-delete" onclick="deleteHabit()">Delete</button>
-    <button class="inbox-send" id="nh-submit" onclick="submitHabitForm()">Create</button>
-  </div>
+    <div class="chips" id="cat-chips"></div>
+    <div class="day-lbl">NOT PLANNED YET</div>
+    <div id="backlog-list"></div>
+  </div></div>
+
 </div>
 
 <script>
@@ -170,37 +226,57 @@ function setNhFreq(freq){
   document.getElementById('nh-target-section').style.display=freq==='count'?'':'none';
   document.getElementById('nh-interval-section').style.display=freq==='interval'?'':'none';
 }
+/* The habit form is the body of the shared Modal shell (see ui.js) — same
+   vignette the Tasks screen uses for its project and task settings. */
+function habitFormBody(){
+  var LBL="font-family:'Share Tech Mono',monospace;font-size:9px;color:#fff;margin-bottom:6px;letter-spacing:0.06em";
+  return '<input id="nh-name" class="inbox-input" style="height:40px;margin-bottom:6px" placeholder="Habit name...">'+
+    '<input id="nh-cat" class="inbox-input" style="height:40px;margin-bottom:8px" placeholder="Category (optional)...">'+
+    '<div style="margin-bottom:10px"><div style="'+LBL+'">FREQUENCY</div><div style="display:flex;gap:5px">'+
+      '<div class="day-btn sel" id="nf-weekly" onclick="setNhFreq(\'weekly\')">Weekly</div>'+
+      '<div class="day-btn" id="nf-count" onclick="setNhFreq(\'count\')">Count</div>'+
+      '<div class="day-btn" id="nf-interval" onclick="setNhFreq(\'interval\')">Interval</div></div></div>'+
+    '<div id="nh-days-section" style="margin-bottom:10px"><div style="'+LBL+'">DAYS</div>'+
+      '<div style="display:flex;gap:5px;flex-wrap:wrap">'+
+      ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(function(d){
+        return '<div class="day-btn" id="nb-'+d+'" onclick="toggleNbDay(\''+d+'\')">'+d+'</div>';
+      }).join('')+'</div></div>'+
+    '<div id="nh-target-section" style="margin-bottom:10px;display:none"><div style="'+LBL+'">TARGET PER WEEK</div>'+
+      '<input id="nh-target" class="inbox-input" type="number" min="1" max="14" style="height:40px" placeholder="e.g. 3"></div>'+
+    '<div id="nh-interval-section" style="margin-bottom:10px;display:none"><div style="'+LBL+'">EVERY N DAYS</div>'+
+      '<input id="nh-interval" class="inbox-input" type="number" min="1" max="365" style="height:40px" placeholder="e.g. 14"></div>';
+}
 function openNewHabit(){
   editingHabitIdx=null;
-  document.getElementById('nh-delete').classList.remove('show');
-  document.getElementById('nh-title').textContent='NEW HABIT';
-  document.getElementById('nh-submit').textContent='Create';
-  document.getElementById('nh-name').value='';
-  document.getElementById('nh-cat').value='';
-  document.getElementById('nh-target').value='';
-  document.getElementById('nh-interval').value='';
-  document.querySelectorAll('#nh-days-section .day-btn').forEach(function(b){b.classList.remove('sel');});
-  setNhFreq('weekly');
-  document.getElementById('new-habit-overlay').classList.add('open');
-  setTimeout(function(){document.getElementById('nh-name').focus();},50);
+  Modal.open({
+    tag:'NEW HABIT',
+    body:habitFormBody(),
+    save:{label:'Create',fn:submitHabitForm},
+    onOpen:function(){
+      setNhFreq('weekly');
+      setTimeout(function(){document.getElementById('nh-name').focus();},50);
+    }
+  });
 }
 function openEditHabit(hi){
   editingHabitIdx=hi;
   var h=habits[hi];
-  document.getElementById('nh-delete').classList.add('show');
-  document.getElementById('nh-title').textContent='EDIT HABIT';
-  document.getElementById('nh-submit').textContent='Update';
-  document.getElementById('nh-name').value=h.name;
-  document.getElementById('nh-cat').value=h.cat||'';
-  document.getElementById('nh-target').value=h.target||'';
-  document.getElementById('nh-interval').value=h.intervalDays||'';
-  document.querySelectorAll('#nh-days-section .day-btn').forEach(function(b){b.classList.remove('sel');});
-  (h.days||[]).forEach(function(d){var btn=document.getElementById('nb-'+d);if(btn)btn.classList.add('sel');});
-  setNhFreq(h.freq||'weekly');
-  document.getElementById('new-habit-overlay').classList.add('open');
-  setTimeout(function(){document.getElementById('nh-name').focus();},50);
+  Modal.open({
+    tag:'EDIT HABIT',
+    body:habitFormBody(),
+    del:{fn:deleteHabit},
+    save:{label:'Update',fn:submitHabitForm},
+    onOpen:function(){
+      document.getElementById('nh-name').value=h.name;
+      document.getElementById('nh-cat').value=h.cat||'';
+      document.getElementById('nh-target').value=h.target||'';
+      document.getElementById('nh-interval').value=h.intervalDays||'';
+      (h.days||[]).forEach(function(d){var b=document.getElementById('nb-'+d);if(b)b.classList.add('sel');});
+      setNhFreq(h.freq||'weekly');
+    }
+  });
 }
-function closeNewHabit(){document.getElementById('new-habit-overlay').classList.remove('open');}
+function closeNewHabit(){Modal.close();}
 function toggleNbDay(d){document.getElementById('nb-'+d).classList.toggle('sel');}
 function buildHabitSub(h){
   if(h.freq==='count'){
@@ -402,7 +478,7 @@ function tickHabit(hi){
 function updateHabitProgress(){}
 
 /* ── LOAD ── */
-function loadAll(){
+function loadHabits(){
   setLoading('habit-list');
   document.getElementById('today-lbl').textContent='TODAY — '+DAY_NAMES[new Date().getDay()];
   fetch(GAS_HABITS).then(function(r){return r.json();}).catch(function(){return{error:'fetch failed'};})
@@ -421,7 +497,440 @@ function loadAll(){
   });
 }
 
+/* ══ TASKS ══ */
+/* ── ENDPOINT ── */
+var GAS_TASKS = 'https://script.google.com/macros/s/AKfycbwO2aFsSlrOcKX6CCnkJf5wAE9kHPY2-LMWnoxz8M5ZB6pawaOEBwmmkFYNetom5Fdr/exec';
+
+var TODAY = todayISO();
+
+/* STATE */
+var projects=[], categories=[], catFilter='All', pane=0, animating=false, openIds={}, doneOpenIds={}, curTask=null;
+
+/* ── WRITES ──
+   Optimistic throughout: local state changes and re-renders first, the fetch
+   goes out behind it, and a failure reverts and tells the user. */
+function post(payload,revert,onOk){
+  fetch(GAS_TASKS,{method:'POST',body:JSON.stringify(payload)})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.error){console.error(payload.action,d.error);if(revert)revert();showToast('Save failed - please try again');}
+      else if(onOk)onOk(d);
+    })
+    .catch(function(){if(revert)revert();showToast('Save failed - check connection');});
+}
+
+/* HELPERS */
+var MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function isDone(st){return String(st||'').toUpperCase()==='DONE';}
+function fmtDue(iso){var p=iso.split('-');return parseInt(p[2],10)+' '+MONTHS[parseInt(p[1],10)-1];}
+function daysTo(iso){return Math.round((new Date(iso+'T00:00:00')-new Date(TODAY+'T00:00:00'))/86400000);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+/* BUILD */
+function build(data){
+  var byParent={};
+  data.tasks.forEach(function(t){(byParent[t.Parent_ID]=byParent[t.Parent_ID]||[]).push(t);});
+  return data.projects.map(function(p){
+    var ts=byParent[p.ID]||[];
+    return {
+      id:p.ID, name:p.Name, cat:p.Category||'', due:p.Due_Date||'',
+      open:ts.filter(function(t){return !isDone(t.Status);}).map(function(t){return {id:t.ID,name:t.Name,due:t.Due_Date||'',done:false};}),
+      done:ts.filter(function(t){return isDone(t.Status);}).map(function(t){return {id:t.ID,name:t.Name,due:t.Due_Date||'',done:true};})
+    };
+  });
+}
+function pct(p){var tot=p.open.length+p.done.length;return tot?Math.round(p.done.length/tot*100):0;}
+
+/* RENDER */
+var gearSvg='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>';
+var tickSvg='<svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg>';
+
+var upSvg='<svg viewBox="0 0 12 12"><polyline points="2,8 6,3 10,8"/></svg>';
+var dnSvg='<svg viewBox="0 0 12 12"><polyline points="2,4 6,9 10,4"/></svg>';
+
+function taskRow(pid,t){
+  var right=t.due?'<div class="tdue'+(!t.done&&daysTo(t.due)<0?' late':'')+'">'+fmtDue(t.due)+'</div>':'';
+  return '<div class="trow'+(t.done?' done':'')+'" onclick="event.stopPropagation();openTask(\''+pid+'\',\''+t.id+'\')">'+
+    '<div class="tck'+(t.done?' ticked':'')+'" onclick="event.stopPropagation();tickTask(\''+pid+'\',\''+t.id+'\')">'+(t.done?tickSvg:'')+'</div>'+
+    '<div class="tname">'+esc(t.name)+'</div>'+right+'</div>';
+}
+
+function projectCard(p,planned){
+  var pc=pct(p);
+  var isOpen=!!openIds[p.id];
+  var right;
+  if(planned){
+    var due=daysTo(p.due);
+    var lbl=due<0?'OVERDUE':(due===0?'DUE TODAY':'DUE');
+    right='<div class="cright"><div><div class="nsub">'+lbl+'</div><div class="bnum">'+fmtDue(p.due)+'</div></div></div>';
+  }else{
+    right='<div class="cright"><button class="planbtn" onclick="event.stopPropagation();planProject(\''+p.id+'\')">PLAN</button></div>';
+  }
+  var cc=planned?(daysTo(p.due)<=7?'dark':'muted'):'dashed';
+
+  var doneBlock='';
+  if(p.done.length){
+    var dOpen=!!doneOpenIds[p.id];
+    doneBlock='<div class="subtog" onclick="event.stopPropagation();toggleDone(\''+p.id+'\')">'+
+      '<span class="arw">'+(dOpen?'v':'>')+'</span><span>COMPLETED ('+p.done.length+')</span></div>'+
+      '<div class="done-list'+(dOpen?' open':'')+'">'+p.done.map(function(t){return taskRow(p.id,t);}).join('')+'</div>';
+  }
+
+  var body='<div class="expand-body'+(isOpen?' open':'')+'">'+
+    '<div class="sec-lbl">TO DO ('+p.open.length+')</div>'+
+    (p.open.length?p.open.map(function(t){return taskRow(p.id,t);}).join(''):'<div class="trow"><div class="tname" style="opacity:.5">Nothing left here</div></div>')+
+    '<div class="addrow"><div class="plusdot">+</div><input id="add-'+p.id+'" class="addinp" placeholder="Add a task..." onclick="event.stopPropagation()" onkeydown="addTaskKey(event,\''+p.id+'\')"></div>'+
+    doneBlock+
+    '<div class="cardacts">'+
+      '<div class="icon-btn" title="Edit project" onclick="event.stopPropagation();openProject(\''+p.id+'\')">'+gearSvg+'</div>'+
+    '</div>'+
+    '</div>';
+
+  return '<div class="card '+cc+'">'+
+    '<div class="card-top" onclick="toggleProject(\''+p.id+'\')">'+
+      '<div class="mid"><div class="ctitle">'+esc(p.name)+'</div>'+
+      '<div class="csub">'+esc((p.cat||'NO CATEGORY').toUpperCase())+' &middot; '+p.open.length+' LEFT</div></div>'+
+      right+
+    '</div>'+
+    '<div class="prow"><div class="pbar"><i style="width:'+pc+'%"></i></div><div class="pct">'+pc+'%</div></div>'+
+    body+
+  '</div>';
+}
+
+function renderPlanned(){
+  var list=projects.filter(function(p){return p.due;}).sort(function(a,b){return a.due<b.due?-1:1;});
+  document.getElementById('planned-list').innerHTML=
+    list.length?list.map(function(p){return projectCard(p,true);}).join(''):'<div class="empty">Nothing planned. Swipe to the backlog and give a project a deadline.</div>';
+}
+function renderBacklog(){
+  var list=projects.filter(function(p){return !p.due;})
+    .filter(function(p){return catFilter==='All'||p.cat===catFilter;});
+  document.getElementById('backlog-list').innerHTML=
+    list.length?list.map(function(p){return projectCard(p,false);}).join(''):'<div class="empty">Nothing here.</div>';
+}
+function renderChips(){
+  var cats=['All'].concat(categories.map(function(c){return c.Name;}));
+  document.getElementById('cat-chips').innerHTML=cats.map(function(c){
+    return '<div class="day-btn'+(c===catFilter?' sel':'')+'" onclick="setCat(\''+c+'\')">'+c+'</div>';
+  }).join('');
+}
+function renderAll(){renderPlanned();renderBacklog();renderChips();}
+
+/* INTERACTIONS */
+function findP(id){return projects.filter(function(p){return p.id===id;})[0];}
+function toggleProject(id){openIds[id]=!openIds[id];renderAll();}
+function toggleDone(id){doneOpenIds[id]=!doneOpenIds[id];renderAll();}
+function setCat(c){catFilter=c;renderBacklog();renderChips();}
+
+function tickTask(pid,tid){
+  var p=findP(pid), nowDone;
+  var i=p.open.map(function(t){return t.id;}).indexOf(tid);
+  if(i!==-1){var t=p.open.splice(i,1)[0];t.done=true;p.done.unshift(t);nowDone=true;}
+  else{
+    var j=p.done.map(function(t){return t.id;}).indexOf(tid);
+    if(j===-1)return;
+    var d=p.done.splice(j,1)[0];d.done=false;p.open.push(d);nowDone=false;
+  }
+  renderAll();
+  post({action:'updateItem',id:tid,Status:nowDone?'DONE':'To Do',Completed_Date:nowDone?todayISO():''},
+       function(){tickTask(pid,tid);});   // flipping back is the revert
+}
+/* renderAll rebuilds the list, so the input the user was in is destroyed.
+   Refocus the fresh one to keep typing task after task. */
+function addTaskKey(e,pid){
+  if(e.key!=='Enter')return;
+  var name=e.target.value.trim();
+  if(!name)return;
+  var p=findP(pid), t={id:'__t'+Date.now(),name:name,due:'',done:false};
+  p.open.push(t);
+  renderAll();
+  var inp=document.getElementById('add-'+pid);
+  if(inp)inp.focus();
+  createTask(p,t);
+}
+/* Shared by both add paths: swap the temp id for the real one on success. */
+function createTask(p,t){
+  post({action:'addItem',Type:'TASK',Parent_ID:p.id,Name:t.name,Category:p.cat,Status:'To Do',Due_Date:t.due||''},
+    function(){
+      var i=p.open.indexOf(t);
+      if(i!==-1)p.open.splice(i,1);
+      renderAll();renderPmTasks();
+    },
+    function(d){if(d&&d.id)t.id=String(d.id);});
+}
+
+/* REORDER — lives in the project vignette. Manual order is the list order;
+   task deadlines are shown on the row but never re-sort it, otherwise a move
+   would not stick. */
+var pmOrderDirty=false;
+function moveTask(i,dir){
+  var j=i+dir;
+  if(j<0||j>=pmTasks.length)return;
+  pmTasks.splice(j,0,pmTasks.splice(i,1)[0]);
+  pmOrderDirty=true;
+  renderPmTasks();
+  renderAll();
+}
+/* One reorder call per editing session rather than one per arrow tap. */
+function flushOrder(){
+  if(!pmOrderDirty||!pmId)return;
+  var ids=pmTasks.map(function(t){return t.id;}).filter(function(id){return id.indexOf('__t')!==0;});
+  pmOrderDirty=false;
+  if(ids.length>1)post({action:'reorderTasks',ids:ids},null);
+}
+
+/* TASK DETAIL */
+function findT(pid,tid){
+  var p=findP(pid);
+  return p.open.concat(p.done).filter(function(t){return t.id===tid;})[0];
+}
+/* Opens from a card row or from the task list inside the project
+   vignette — in the second case it stacks on top and the project stays open. */
+function openTask(pid,tid){
+  curTask={pid:pid,tid:tid};
+  var t=findT(pid,tid);
+  Modal.open({
+    tag:esc(findP(pid).name.toUpperCase()),
+    body:'<input id="tm-name" class="ov-inp" placeholder="Task name...">'+
+         calField('tm','DEADLINE',t.due||''),
+    del:{fn:deleteTaskItem},
+    save:{fn:saveTask},
+    onOpen:function(){document.getElementById('tm-name').value=t.name;}
+  });
+}
+function closeTask(){curTask=null;Modal.close();renderPmTasks();}
+function saveTask(){
+  if(!curTask)return;
+  var t=findT(curTask.pid,curTask.tid);
+  var before={name:t.name,due:t.due};
+  var name=document.getElementById('tm-name').value.trim();
+  if(name)t.name=name;
+  t.due=calValue('tm');
+  var id=t.id;
+  closeTask();
+  renderAll();
+  post({action:'updateItem',id:id,Name:t.name,Due_Date:t.due},
+       function(){t.name=before.name;t.due=before.due;renderAll();renderPmTasks();});
+}
+function deleteTaskItem(){
+  if(!curTask)return;
+  var p=findP(curTask.pid), tid=curTask.tid, removed=null, fromKey, fromIdx;
+  ['open','done'].forEach(function(k){
+    var i=p[k].map(function(t){return t.id;}).indexOf(tid);
+    if(i!==-1){removed=p[k].splice(i,1)[0];fromKey=k;fromIdx=i;}
+  });
+  closeTask();
+  renderAll();
+  if(!removed)return;
+  post({action:'deleteTask',id:tid},
+       function(){p[fromKey].splice(fromIdx,0,removed);renderAll();renderPmTasks();});
+}
+function planProject(id){openProject(id);}
+
+/* PROJECT VIGNETTE — create (id null) or edit. Uses the shared Modal shell. */
+var pmCat='Household', pmId=null, pmTasks=[];
+function openNewProject(){openProject(null);}
+function openProject(id){
+  pmId=id;
+  var p=id?findP(id):null;
+  pmCat=p?p.cat:(categories[0]?categories[0].Name:'');
+  // edit: the live open list, so moves and adds land straight on the project.
+  // create: a staging list handed to the project on Create.
+  pmTasks=p?p.open:[];
+  Modal.open({
+    tag:p?'EDIT PROJECT':'NEW PROJECT',
+    body:'<input id="pm-name" class="ov-inp" placeholder="Area | title...">'+
+         '<div class="ov-lbl">CATEGORY</div><div class="chips" id="pm-cats"></div>'+
+         calField('pm','DEADLINE (BLANK = BACKLOG)',p?p.due:'')+
+         '<div class="pm-tasks" id="pm-tasks"></div>',
+    del:p?{fn:deleteProject}:null,
+    save:{label:p?'Save':'Create',fn:saveProject},
+    onOpen:function(){
+      document.getElementById('pm-name').value=p?p.name:'';
+      renderPmCats();
+      renderPmTasks();
+      if(!p)setTimeout(function(){document.getElementById('pm-name').focus();},50);
+    }
+  });
+}
+function renderPmTasks(){
+  var el=document.getElementById('pm-tasks');
+  if(!el)return;
+  var n=pmTasks.length;
+  el.innerHTML='<div class="sec-lbl">TASKS ('+n+')</div>'+
+    pmTasks.map(function(t,i){
+      // a staged task has no saved project to open against yet
+      var name=pmId
+        ? '<div class="tname pmt" onclick="openTask(\'' + pmId + '\',\'' + t.id + '\')">'+esc(t.name)+'</div>'
+        : '<div class="tname">'+esc(t.name)+'</div>';
+      return '<div class="trow">'+name+'<div class="tacts">'+
+        '<div class="tmv'+(i===0?' off':'')+'" onclick="moveTask('+i+',-1)">'+upSvg+'</div>'+
+        '<div class="tmv'+(i===n-1?' off':'')+'" onclick="moveTask('+i+',1)">'+dnSvg+'</div>'+
+        '</div></div>';
+    }).join('')+
+    '<div class="addrow"><input id="pm-add" class="addinp" placeholder="Add a task..." onkeydown="pmAddKey(event)"></div>'+
+    pmDoneBlock();
+}
+/* Completed tasks sit under the add row, struck through and without arrows —
+   nothing to reorder, and they are not ticked from here. */
+function pmDoneBlock(){
+  var done=pmId?findP(pmId).done:[];
+  if(!done.length)return '';
+  return '<div class="sec-lbl done-lbl">TASKS COMPLETED ('+done.length+')</div>'+
+    done.map(function(t){
+      return '<div class="trow done"><div class="tname pmt" onclick="openTask(\'' + pmId + '\',\'' + t.id + '\')">'+esc(t.name)+'</div></div>';
+    }).join('');
+}
+/* Enter commits the task and leaves a fresh empty line focused, so a list can
+   be typed straight through without reaching for anything. */
+function pmAddKey(e){
+  if(e.key!=='Enter')return;
+  var v=e.target.value.trim();
+  if(!v)return;
+  var t={id:'__t'+Date.now(),name:v,due:'',done:false};
+  pmTasks.push(t);
+  renderPmTasks();
+  document.getElementById('pm-add').focus();
+  // a staged task is written when the project itself is created
+  if(pmId){renderAll();createTask(findP(pmId),t);}
+}
+function renderPmCats(){
+  document.getElementById('pm-cats').innerHTML=categories.map(function(c){
+    return '<div class="day-btn'+(c.Name===pmCat?' sel':'')+'" onclick="pmCat=\'' + c.Name + '\';renderPmCats()">'+c.Name+'</div>';
+  }).join('')+'<div class="day-btn" onclick="pmNewCat()">+</div>';
+}
+/* The + chip swaps itself for an inline field — no native prompt. */
+function pmNewCat(){
+  var el=document.getElementById('pm-cats');
+  el.insertAdjacentHTML('beforeend','<input id="pm-newcat" class="catinp" placeholder="New..." onkeydown="pmNewCatKey(event)">');
+  document.getElementById('pm-newcat').focus();
+}
+function pmNewCatKey(e){
+  if(e.key!=='Enter')return;
+  var v=e.target.value.trim();
+  if(!v)return;
+  var c={ID:'__c'+Date.now(),Name:v};
+  categories.push(c);
+  pmCat=v;
+  renderPmCats();
+  renderChips();
+  post({action:'addCategory',name:v},
+    function(){
+      var i=categories.indexOf(c);
+      if(i!==-1)categories.splice(i,1);
+      renderPmCats();renderChips();
+    },
+    function(d){if(d&&d.id)c.ID=String(d.id);});
+}
+function closeProject(){flushOrder();pmId=null;Modal.close();}
+function saveProject(){
+  var name=document.getElementById('pm-name').value.trim();
+  if(!name)return;
+  var due=calValue('pm'), editing=pmId, staged=pmTasks;
+  if(editing){
+    var p=findP(editing);
+    var before={name:p.name,cat:p.cat,due:p.due};
+    p.name=name;p.cat=pmCat;p.due=due;
+    closeProject();
+    renderAll();
+    goPane(due?0:1);
+    post({action:'updateItem',id:p.id,Name:name,Category:pmCat,Due_Date:due},
+         function(){p.name=before.name;p.cat=before.cat;p.due=before.due;renderAll();});
+  }else{
+    var np={id:'__p'+Date.now(),name:name,cat:pmCat,due:due,open:staged,done:[]};
+    projects.push(np);
+    closeProject();
+    renderAll();
+    goPane(due?0:1);
+    post({action:'addItem',Type:'PROJECT',Name:name,Category:pmCat,Status:'To Do',Due_Date:due},
+      function(){
+        var i=projects.indexOf(np);
+        if(i!==-1)projects.splice(i,1);
+        renderAll();
+      },
+      function(d){
+        if(!d||!d.id)return;
+        np.id=String(d.id);
+        // the staged tasks only get rows once the project has a real id
+        staged.forEach(function(t){createTask(np,t);});
+      });
+  }
+}
+function deleteProject(){
+  if(!pmId)return;
+  var p=findP(pmId);
+  if(!confirm('Delete "'+p.name+'" and its '+(p.open.length+p.done.length)+' tasks?'))return;
+  var idx=projects.indexOf(p), id=p.id;
+  projects.splice(idx,1);
+  closeProject();
+  renderAll();
+  post({action:'deleteProject',project_id:id},
+       function(){projects.splice(idx,0,p);renderAll();});
+}
+
+/* PANE SWIPE */
+function slideContent(el,dir,fn){
+  if(animating)return;
+  animating=true;
+  el.style.transition='transform .18s ease, opacity .18s ease';
+  el.style.transform='translateX('+(-dir*40)+'px)';
+  el.style.opacity='0';
+  setTimeout(function(){
+    fn();
+    el.style.transition='none';
+    el.style.transform='translateX('+(dir*40)+'px)';
+    requestAnimationFrame(function(){
+      el.style.transition='transform .18s ease, opacity .18s ease';
+      el.style.transform='translateX(0)';
+      el.style.opacity='1';
+    });
+    setTimeout(function(){animating=false;},200);
+  },180);
+}
+function goPane(next){
+  if(next===pane||next<0||next>=PANE_IDS.length||animating)return;
+  slideContent(document.getElementById('tk-content'),next>pane?1:-1,function(){
+    PANE_IDS.forEach(function(id,i){document.getElementById(id).classList.toggle('active',i===next);});
+    document.getElementById('topbar-title').textContent=PANE_TITLE[next];
+    pane=next;
+  });
+}
+var sx=0,sy=0;
+var tk=document.getElementById('tk-content');
+tk.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+tk.addEventListener('touchend',function(e){
+  var dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+  if(Math.abs(dx)<55||Math.abs(dx)<Math.abs(dy))return;
+  goPane(dx<0?pane+1:pane-1);
+},{passive:true});
+
+/* LOAD */
+function loadTasks(){
+  var MONO="font-family:'Share Tech Mono',monospace;font-size:10px;padding:20px 0";
+  document.getElementById('planned-list').innerHTML='<div style="'+MONO+';color:#ccc">Loading...</div>';
+  fetch(GAS_TASKS)
+    .then(function(r){return r.json();})
+    .catch(function(){return{error:'fetch failed'};})
+    .then(function(res){
+      if(res.error){
+        document.getElementById('planned-list').innerHTML='<div style="'+MONO+';color:#D85A30">Tasks unavailable: '+res.error+'</div>';
+        return;
+      }
+      // a Categories row whose Name cell was cleared would render a blank chip
+      categories=(res.categories||[]).filter(function(c){return String(c.Name||'').trim();});
+      projects=build(res);
+      renderAll();
+    });
+}
+
+
+/* ── PANES ── 0 habits, 1 planned, 2 backlog on one horizontal axis */
+var PANE_IDS   = ['tk-habits','tk-planned','tk-backlog'];
+var PANE_TITLE = ['HABITS','TASKS','TASKS'];
+function onPlus(){ pane===0 ? openNewHabit() : openNewProject(); }
+
 /* ── INIT ── */
+function loadAll(){loadHabits();loadTasks();}
 loadAll();
 // Remove the service worker + caches left by earlier versions of this app
 if('serviceWorker' in navigator){
